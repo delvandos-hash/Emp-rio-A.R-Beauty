@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a1a1a" />
+  <title>Empório A.R. Beauty | Catálogo de Maquiagem</title>
+  <meta name="description" content="Catálogo online de maquiagens e cosméticos. Preços de varejo e atacado. Pedido pelo WhatsApp." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://emporioar-beauty.netlify.app/" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="pt_BR" />
+  <meta property="og:site_name" content="Empório A.R. Beauty" />
+  <meta property="og:title" content="Empório A.R. Beauty | Catálogo de Maquiagem" />
+  <meta property="og:description" content="Maquiagens com preço de varejo e atacado. Peça pelo WhatsApp." />
+  <meta property="og:url" content="https://emporioar-beauty.netlify.app/" />
+  <meta property="og:image" content="https://emporioar-beauty.netlify.app/assets/logo.jpg" />
+
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png" />
+
+  <style>
+    :root {
+      --primary: #6B2D5B;
+      --primary-light: #F8F0F7;
+      --gold: #B89A5A;
+      --text: #1F2937;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+      --card: #FFFFFF;
+      --bg: #F7F5F2;
+      --wa: #25D366;
+      --wa-dark: #1ebe57;
+      --shadow: 0 4px 20px rgba(0,0,0,.08);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    header {
+      background: linear-gradient(145deg, #121212 0%, #2a2a2a 100%);
+      color: #fff;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+      box-shadow: 0 4px 24px rgba(0,0,0,.35);
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      text-decoration: none;
+      color: inherit;
+    }
+    .brand img {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: #fff;
+      object-fit: contain;
+      box-shadow: 0 0 0 2px var(--gold);
+    }
+    .brand h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .brand span {
+      display: block;
+      font-size: .7rem;
+      opacity: .75;
+      font-weight: 400;
+    }
+    .tabs {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .tab {
+      border: none;
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      padding: .5rem .9rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: .8rem;
+      font-weight: 600;
+      transition: all .2s;
+    }
+    .tab:hover, .tab.active { background: var(--primary); }
+    .toolbar {
+      max-width: 1180px;
+      margin: 1rem auto 0;
+      padding: 0 1rem;
+      display: flex;
+      gap: .6rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search {
+      flex: 1;
+      min-width: 180px;
+      position: relative;
+    }
+    .search input {
+      width: 100%;
+      padding: .65rem 1rem .65rem 2.4rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      font-size: .9rem;
+      outline: none;
+      background: #fff;
+    }
+    .search::before {
+      content: "🔍";
+      position: absolute;
+      left: .8rem;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: .5;
+    }
+    .filter-select {
+      padding: .65rem .9rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      font-size: .82rem;
+      min-width: 140px;
+    }
+    main {
+      max-width: 1180px;
+      margin: 1rem auto 4rem;
+      padding: 0 1rem;
+    }
+    .products {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: .75rem;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .85rem;
+      display: flex;
+      gap: .8rem;
+      position: relative;
+      transition: box-shadow .2s, transform .15s;
+    }
+    .card:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-2px);
+    }
+    .photo {
+      width: 72px;
+      height: 72px;
+      border-radius: 10px;
+      background: #f3f4f6;
+      flex-shrink: 0;
+      overflow: hidden;
+      position: relative;
+    }
+    .photo img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .badge-novo, .badge-esgotado {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      font-size: .58rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 4px;
+      color: #fff;
+      z-index: 2;
+    }
+    .badge-novo { background: #059669; }
+    .badge-esgotado { background: #dc2626; }
+    .fav {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      border: none;
+      font-size: 1.1rem;
+      cursor: pointer;
+      opacity: .7;
+      z-index: 3;
+    }
+    .fav.active { opacity: 1; color: #e11d48; }
+    .info { flex: 1; min-width: 0; }
+    .name {
+      font-size: .88rem;
+      font-weight: 650;
+      margin-bottom: .15rem;
+      line-height: 1.25;
+    }
+    .meta {
+      font-size: .72rem;
+      color: var(--muted);
+      margin-bottom: .35rem;
+    }
+    .prices {
+      display: flex;
+      gap: .8rem;
+      font-size: .8rem;
+      margin-bottom: .5rem;
+    }
+    .price-v { color: var(--text); }
+    .price-a { color: #059669; font-weight: 700; }
+    .price-label {
+      font-size: .6rem;
+      text-transform: uppercase;
+      color: var(--muted);
+      display: block;
+    }
+    .card-actions {
+      display: flex;
+      gap: .35rem;
+      flex-wrap: wrap;
+    }
+    .btn-sm {
+      border: none;
+      border-radius: 8px;
+      padding: .35rem .65rem;
+      font-size: .7rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-details { background: #f3f4f6; color: #111; }
+    .btn-cart { background: #e0e7ff; color: #3730a3; }
+    .btn-buy { background: var(--wa); color: #fff; }
+    .empty {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--muted);
+    }
+    footer {
+      text-align: center;
+      padding: 1.5rem 1rem;
+      font-size: .72rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      background: #fff;
+    }
+    #bootStatus {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+    }
+    /* Dark theme support (media or class) */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --text: #e5e7eb;
+        --muted: #9ca3af;
+        --border: #374151;
+        --card: #1f2937;
+        --bg: #111827;
+      }
+      body { background: var(--bg); color: var(--text); }
+      .search input, .filter-select { background: #1f2937; color: var(--text); border-color: var(--border); }
+      .btn-details { background: #374151; color: #e5e7eb; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/" class="brand">
+      <img src="assets/logo.jpg" alt="Logo" onerror="this.style.display='none'" />
+      <div>
+        <h1>Empório A.R. Beauty</h1>
+        <span>Maquiagem · Varejo e Atacado</span>
+      </div>
+    </a>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-line="all">Todos</button>
+      <button class="tab" data-line="rosto">Rosto</button>
+      <button class="tab" data-line="olhos">Olhos</button>
+      <button class="tab" data-line="labios">Lábios</button>
+      <button class="tab" data-line="corpo">Corpo</button>
+      <button class="tab" data-line="cabelo">Cabelo</button>
+      <button class="tab" data-line="acessorios">Acessórios</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="search">
+      <input type="search" id="searchInput" placeholder="Buscar por nome ou marca..." autocomplete="off" />
+    </div>
+    <select class="filter-select" id="filterDisponivel">
+      <option value="all">Todos</option>
+      <option value="sim">Só disponíveis</option>
+      <option value="nao">Esgotados</option>
+    </select>
+    <select class="filter-select" id="filterPreco">
+      <option value="all">Qualquer preço</option>
+      <option value="ate50">Até R$ 50</option>
+      <option value="50a100">R$ 50–100</option>
+      <option value="acima100">Acima de R$ 100</option>
+    </select>
+  </div>
+
+  <main>
+    <div id="bootStatus">Carregando catálogo…</div>
+    <div id="products" class="products" style="display:none;"></div>
+    <div id="empty" class="empty" style="display:none;">
+      <strong>Nenhum produto encontrado</strong>
+      <p>Tente ajustar a busca ou os filtros.</p>
+    </div>
+  </main>
+
+  <footer>
+    <p>Empório A.R. Beauty · Pedidos via WhatsApp (62) 99113-4488</p>
+    <p>Catálogo digital · Preços sujeitos a alteração</p>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
