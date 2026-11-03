@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://emporioar-beauty.netlify.app/sitemap.xml

@@ -1,6 +1,8 @@
 [build]
   publish = "."
-  # Sem build command — site estático puro
+
+[functions]
+  directory = "netlify/functions"
 
 [[redirects]]
   from = "/feed.xml"
@@ -8,24 +10,28 @@
   status = 200
   force = true
 
-# Se precisar de proxy para estoque ao vivo no futuro:
-# [[redirects]]
-#   from = "/api/estoque/*"
-#   to = "https://fornecedor.com/..."
-#   status = 200
-#   force = true
-
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
 
 [[headers]]
   for = "/js/*"
   [headers.values]
-    Cache-Control = "public, max-age=3600"
+    Cache-Control = "public, max-age=60, must-revalidate"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/catalogo.json"
+  [headers.values]
+    Cache-Control = "public, max-age=120"
 
 [[headers]]
   for = "/assets/*"

@@ -1,16 +1,9 @@
-// Service Worker mínimo para PWA (cache básico de assets estáticos)
-const CACHE = 'ar-beauty-v1';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/js/app.js',
-  '/js/prices.js',
-  '/manifest.webmanifest'
-];
+const CACHE = 'ar-beauty-v3';
+const PRECACHE = ['/manifest.webmanifest', '/assets/logo.jpg', '/assets/icon-192.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
 });
 
@@ -23,15 +16,38 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  // Network-first para o catálogo (Gist), cache-first para assets
   const url = new URL(e.request.url);
-  if (url.hostname.includes('gist.githubusercontent.com') || url.pathname.includes('catalogo')) {
+  if (e.request.method !== 'GET') return;
+
+  // Network-first for HTML, JS, JSON and API
+  const networkFirst =
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.json') ||
+    url.pathname.includes('/.netlify/functions/');
+
+  if (networkFirst) {
     e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
+      fetch(e.request)
+        .then(res => {
+          const copy = res.clone();
+          if (res.ok && !url.pathname.includes('/functions/')) {
+            caches.open(CACHE).then(c => c.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request))
     );
     return;
   }
+
+  // Cache-first for static assets
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+      const copy = res.clone();
+      if (res.ok) caches.open(CACHE).then(c => c.put(e.request, copy));
+      return res;
+    }))
   );
 });
