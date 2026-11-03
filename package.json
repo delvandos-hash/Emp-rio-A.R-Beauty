@@ -2,7 +2,6 @@
   "name": "catalogo-maquiagem",
   "version": "1.0.0",
   "private": true,
-  "type": "module",
   "scripts": {
     "sync": "node scripts/sync-catalog.mjs"
   },
