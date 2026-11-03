@@ -92,6 +92,18 @@ function parsePrice(str) {
   return parseFloat(s) || 0;
 }
 
+function unescapeHtml(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+    .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
+}
+
 function formatPrice(n) {
   return (Math.round(n * 100) / 100).toFixed(2).replace('.', ',');
 }
@@ -114,8 +126,12 @@ function mapLine(category, name = '') {
     if (cat.includes(key) || n.includes(key)) return line;
   }
   if (cat.includes('maquiagem') || cat.includes('rimel') || cat.includes('sombra')) return 'olhos';
+  if (cat.includes('hidrat') || cat.includes('esfolia') || cat.includes('sabonete') || cat.includes('body') || cat.includes('corporal')) return 'corpo';
   if (cat.includes('cosmetico') || cat.includes('corpo')) return 'corpo';
-  if (cat.includes('acessorio')) return 'acessorios';
+  if (cat.includes('shampoo') || cat.includes('condicion') || cat.includes('capilar') || cat.includes('cabelo')) return 'cabelo';
+  if (cat.includes('acessorio') || cat.includes('pincel') || cat.includes('esponja')) return 'acessorios';
+  if (cat.includes('batom') || cat.includes('lip ')) return 'labios';
+  if (cat.includes('base') || cat.includes('blush') || cat.includes('po ') || cat.includes('pó')) return 'rosto';
   return 'outros';
 }
 
@@ -167,7 +183,7 @@ async function processProduct(url) {
     const p = extractJsonLdProduct(html);
     if (!p) return null;
 
-    const name = (p.name || '').trim();
+    const name = unescapeHtml((p.name || '').trim());
     const brand = (p.brand?.name || '').trim() || 'Sem marca';
     const image = typeof p.image === 'string' ? p.image : (Array.isArray(p.image) ? p.image[0] : '') || '';
     const basePrice = parseFloat(p.offers?.price) || 0;
@@ -204,7 +220,7 @@ async function processProduct(url) {
         varejo: prices.varejo,
         atacado: prices.atacado,
         disponivel: availability,
-        notas: (p.description && p.description !== name) ? p.description.slice(0, 400) : '',
+        notas: (p.description && p.description !== name) ? unescapeHtml(p.description).slice(0, 400) : '',
         foto: image,
         fotos: image ? [image] : [],
         badge: '',
