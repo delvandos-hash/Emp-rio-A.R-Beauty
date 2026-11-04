@@ -1,3 +1,7 @@
+/**
+ * Proxy de estoque ao vivo — allowlist de host.
+ * Mantido como estava. Sem alterações funcionais.
+ */
 const ALLOWED_HOST = 'www.makimakesoficial.com.br';
 
 exports.handler = async (event) => {
