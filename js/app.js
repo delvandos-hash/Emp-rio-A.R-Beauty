@@ -107,7 +107,7 @@ let detailsNavList = [];
 let detailsNavIndex = 0;
 let detailsScrollY = 0;
 let buyProduct = null;
-let currentProduct = null; // Para gerenciar variações no modal
+let currentProduct = null;
 
 document.addEventListener('error', (e) => {
   const img = e.target;
@@ -132,7 +132,17 @@ function getAllProducts() {
 function findProduct(id) {
   return getAllProducts().find(p => productId(p) === id) || null;
 }
+
+// Retorna true se o produto for de vitrine (e deve ser ocultado do catálogo geral)
+function isVitrineProduct(p) {
+  const b = (p.badge || '').toUpperCase();
+  return b.includes('LOJAS') || b.includes('R$10') || b.includes('OFERTA') || p.destaque;
+}
+
 function matchesFilters(p) {
+  // Filtro crucial: não mostrar vitrines no meio do catálogo principal
+  if (isVitrineProduct(p)) return false;
+
   if (currentLine !== 'all' && p.line !== currentLine) return false;
   if (searchTerm) {
     const q = searchTerm.toLowerCase();
@@ -274,7 +284,10 @@ function renderDestaques() {
   if (!host) return;
   const lojas = DESTAQUES.lojas10?.items || [];
   const ofertas = DESTAQUES.ofertasLimitadas?.items || [];
+  
   let html = '';
+  
+  // Vitrine de Ofertas
   if (ofertas.length) {
     html += `<section class="vitrine-section">
       <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.ofertasLimitadas.title || 'Ofertas por tempo limitado')}</h2></div>
@@ -283,12 +296,17 @@ function renderDestaques() {
       </div>
     </section>`;
   }
+  
+  // Vitrine Lojas R$10
   if (lojas.length) {
-    html += `<section class="section-block" id="secLojas10">
-      <h2 class="section-title">${escapeHtml(DESTAQUES.lojas10.title || 'Lojas de R$10,00')}</h2>
-      <div class="products-grid section-grid">${lojas.map(cardHtml).join('')}</div>
+    html += `<section class="vitrine-section">
+      <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.lojas10.title || 'Lojas de R$10,00')}</h2></div>
+      <div class="vitrine-track" id="vitrineLojas">
+        ${lojas.map(p => `<div class="vitrine-card">${cardHtml(p)}</div>`).join('')}
+      </div>
     </section>`;
   }
+  
   host.innerHTML = html;
   bindCardEvents(host);
 }
@@ -299,10 +317,13 @@ function renderProducts(resetPage=true) {
   const empty = document.getElementById('empty');
   const moreWrap = document.getElementById('loadMoreWrap');
   const stats = document.getElementById('resultStats');
+  
+  // O filtro matchesFilters já remove as vitrines daqui
   const filtered = sortProducts(getAllProducts().filter(matchesFilters));
   detailsNavList = filtered;
   const total = filtered.length;
   const visible = filtered.slice(0, page * PAGE_SIZE);
+  
   if (stats) stats.textContent = total ? `${Math.min(visible.length,total)} de ${total} produtos` : '';
   if (!total) {
     container.style.display = 'none';
@@ -359,7 +380,7 @@ function openDetails(p, opts={}) {
     detailsNavIndex = Math.max(0, filtered.findIndex(x => productId(x)===productId(p)));
   }
   currentProduct = p;
-  p.variacaoSelecionada = null; // Reseta ao abrir
+  p.variacaoSelecionada = null;
   
   const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.foto ? [p.foto] : []);
   const mainFoto = escapeHtml(fotos[0]||'');
@@ -376,8 +397,6 @@ function openDetails(p, opts={}) {
   const thumbs = fotos.slice(1).map((f,i)=>`<img src="${escapeHtml(f)}" alt="" width="48" height="48" loading="lazy" data-full="${escapeHtml(f)}"/>`).join('');
   
   injectProductJsonLd(p);
-  
-  // Monta HTML incluindo as variações (se houver)
   const variacoesHtml = buildVariacoesHtml(p);
 
   document.getElementById('detailsContent').innerHTML = `
@@ -404,11 +423,8 @@ function openDetails(p, opts={}) {
   document.querySelectorAll('.details-thumbs img').forEach(img => {
     img.addEventListener('click', () => { const m=document.getElementById('detailsMainImg'); if(m) m.src=img.dataset.full||img.src; });
   });
-  
-  // Bind nos botões de variação
   bindVariacaoSelector(p);
 
-  // Ação de adicionar ao carrinho checando variação
   document.getElementById('detailsAddCart')?.addEventListener('click', () => {
     if (p.variacoes && p.variacoes.length > 0 && !p.variacaoSelecionada) {
       showToast('Selecione uma opção antes de adicionar.');
@@ -418,7 +434,6 @@ function openDetails(p, opts={}) {
     closeModal('detailsModal'); 
   });
   
-  // Ação de comprar checando variação
   document.getElementById('detailsBuy')?.addEventListener('click', () => { 
     if (p.variacoes && p.variacoes.length > 0 && !p.variacaoSelecionada) {
       showToast('Selecione uma opção antes de comprar.');
