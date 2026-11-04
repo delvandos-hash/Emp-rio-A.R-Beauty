@@ -81,6 +81,22 @@ const PRICE_RULES = {
   atacadoMarkup: 2.00,
 };
 
+// Destaques do site raiz (markup diferenciado)
+const SPECIAL_GROUPS = {
+  lojas10: {
+    url: 'https://www.makimakesoficial.com.br/lojas-de-10/g',
+    title: 'Lojas de R$10,00',
+    varejoMarkup: 2.80,  // 180%
+    atacadoMarkup: 2.50  // 150%
+  },
+  ofertasLimitadas: {
+    url: 'https://www.makimakesoficial.com.br/ofertas-por-tempo-limitado/g',
+    title: 'Ofertas por tempo limitado',
+    varejoMarkup: 2.80,
+    atacadoMarkup: 2.50
+  }
+};
+
 // ========== HELPERS ==========
 function sleep(ms) {
   return new Promise(r => setTimeout(r, ms));
@@ -113,6 +129,37 @@ function calcPrices(base) {
     varejo: formatPrice(base * PRICE_RULES.varejoMarkup),
     atacado: formatPrice(base * PRICE_RULES.atacadoMarkup)
   };
+}
+
+function calcSpecialPrices(base, groupKey) {
+  const g = SPECIAL_GROUPS[groupKey];
+  if (!g) return calcPrices(base);
+  return {
+    varejo: formatPrice(base * g.varejoMarkup),
+    atacado: formatPrice(base * g.atacadoMarkup)
+  };
+}
+
+/** Extrai slugs /p de uma página de grupo/destaque */
+async function fetchGroupSlugs(groupUrl) {
+  try {
+    const res = await fetch(groupUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EmpórioARBeauty/1.0)', 'Accept': 'text/html' }
+    });
+    if (!res.ok) return new Set();
+    const html = await res.text();
+    const set = new Set();
+    const re = /href="([^"]+\/p)"/g;
+    let m;
+    while ((m = re.exec(html))) {
+      let slug = m[1].replace(/^https?:\/\/www\.makimakesoficial\.com\.br\//, '').replace(/^\//, '');
+      if (slug.endsWith('/p')) set.add(slug);
+    }
+    return set;
+  } catch (e) {
+    console.warn('Falha grupo', groupUrl, e.message);
+    return new Set();
+  }
 }
 
 function norm(s) {
@@ -177,7 +224,7 @@ async function getProductUrlsFromSitemap() {
   return urls;
 }
 
-async function processProduct(url) {
+async function processProduct(url, specialMaps = {}) {
   try {
     const html = await fetchText(url);
     const p = extractJsonLdProduct(html);
@@ -191,7 +238,6 @@ async function processProduct(url) {
     const category = p.category || '';
     const gtin = p.gtin || '';
 
-    // Excluir perfumaria explícita
     const lower = (name + ' ' + brand + ' ' + category).toLowerCase();
     if (
       lower.includes('perfume') ||
@@ -203,31 +249,42 @@ async function processProduct(url) {
 
     if (basePrice <= 0) return null;
 
-    const prices = calcPrices(basePrice);
+    // slug relativo para bater com grupos
+    const slug = url.replace(/^https?:\/\/www\.makimakesoficial\.com\.br\//, '').replace(/^\//, '');
+    let specialKey = null;
+    for (const [key, set] of Object.entries(specialMaps)) {
+      if (set.has(slug)) { specialKey = key; break; }
+    }
+
+    const prices = specialKey ? calcSpecialPrices(basePrice, specialKey) : calcPrices(basePrice);
     const volume = extractVolume(name);
     const line = mapLine(category, name);
-
-    // Box / pack detection: sold only as multipack → show only atacado price
     const isBox = /\b\d+\s*UN\b/i.test(name) || /\bbox\b/i.test(name);
+
+    let badge = '';
+    if (specialKey === 'lojas10') badge = 'LOJAS R$10';
+    if (specialKey === 'ofertasLimitadas') badge = 'OFERTA';
 
     return {
       line,
       cat: category || line,
       brand,
+      specialKey,
       item: {
         nome: name,
         volume: volume,
-        varejo: prices.varejo,
+        varejo: isBox ? null : prices.varejo,
         atacado: prices.atacado,
         disponivel: availability,
         notas: (p.description && p.description !== name) ? unescapeHtml(p.description).slice(0, 400) : '',
         foto: image,
         fotos: image ? [image] : [],
-        badge: '',
+        badge,
         gtin,
         sourceUrl: url,
         basePrice: formatPrice(basePrice),
-        somenteAtacado: isBox
+        somenteAtacado: isBox,
+        destaque: specialKey || null
       }
     };
   } catch (e) {
@@ -255,25 +312,47 @@ async function runPool(urls, concurrency, fn) {
 async function main() {
   console.log('=== Sync Catálogo Maquiagem (MakiMakes) ===\n');
 
+  // Destaques do site raiz (atualiza a cada sync)
+  const specialMaps = {};
+  for (const [key, cfg] of Object.entries(SPECIAL_GROUPS)) {
+    console.log('Grupo:', cfg.title);
+    const set = await fetchGroupSlugs(cfg.url);
+    specialMaps[key] = set;
+    console.log('  →', set.size, 'produtos');
+  }
+
   let urls = await getProductUrlsFromSitemap();
+  // garante URLs dos destaques mesmo se sumirem do sitemap
+  for (const set of Object.values(specialMaps)) {
+    for (const slug of set) {
+      const full = 'https://www.makimakesoficial.com.br/' + slug;
+      if (!urls.includes(full)) urls.push(full);
+    }
+  }
   if (MAX_PRODUCTS < Infinity) {
     urls = urls.slice(0, MAX_PRODUCTS);
     console.log(`Limitado a ${MAX_PRODUCTS} produtos para teste\n`);
   }
 
   console.log(`Processando com concorrência ${CONCURRENCY}...\n`);
-  const raw = await runPool(urls, CONCURRENCY, processProduct);
+  const raw = await runPool(urls, CONCURRENCY, (url) => processProduct(url, specialMaps));
   console.log(`\nExtraídos com sucesso: ${raw.length}`);
 
-  // Agrupar
   const groupsByLine = {};
+  const brandsSet = new Set();
+  const destaquesItems = { lojas10: [], ofertasLimitadas: [] };
+
   for (const r of raw) {
+    brandsSet.add(r.brand);
     if (!groupsByLine[r.line]) groupsByLine[r.line] = {};
     const key = `${r.brand}||${r.cat}`;
     if (!groupsByLine[r.line][key]) {
       groupsByLine[r.line][key] = { cat: r.cat, brand: r.brand, items: [] };
     }
     groupsByLine[r.line][key].items.push(r.item);
+    if (r.specialKey && destaquesItems[r.specialKey]) {
+      destaquesItems[r.specialKey].push({ ...r.item, brand: r.brand, cat: r.cat, line: r.line });
+    }
   }
 
   const DATA = {};
@@ -281,8 +360,23 @@ async function main() {
     DATA[line] = Object.values(groups).sort((a, b) => a.brand.localeCompare(b.brand));
   }
 
+  const DESTAQUES = {
+    lojas10: {
+      title: SPECIAL_GROUPS.lojas10.title,
+      items: destaquesItems.lojas10
+    },
+    ofertasLimitadas: {
+      title: SPECIAL_GROUPS.ofertasLimitadas.title,
+      items: destaquesItems.ofertasLimitadas
+    }
+  };
+
+  const BRANDS = [...brandsSet].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
   const output = {
     DATA,
+    DESTAQUES,
+    BRANDS,
     WHATSAPP: process.env.WHATSAPP || '5562991134488',
     BRAND: {
       name: process.env.BRAND_NAME || 'Empório A.R. Beauty',
@@ -293,8 +387,14 @@ async function main() {
       updated_at: new Date().toISOString(),
       source: 'makimakesoficial.com.br',
       total_products: raw.length,
-      version: 1,
-      price_rules: PRICE_RULES
+      version: 2,
+      price_rules: {
+        ...PRICE_RULES,
+        especiais: {
+          lojas10: { varejoMarkup: 2.8, atacadoMarkup: 2.5 },
+          ofertasLimitadas: { varejoMarkup: 2.8, atacadoMarkup: 2.5 }
+        }
+      }
     }
   };
 
@@ -305,7 +405,8 @@ async function main() {
     const count = DATA[k].reduce((s, g) => s + g.items.length, 0);
     return `${k}(${count})`;
   }).join(', '));
-  console.log('\nPróximo: revisar PRICE_RULES e publicar no Gist.');
+  console.log('Destaques: lojas10=', DESTAQUES.lojas10.items.length, 'ofertas=', DESTAQUES.ofertasLimitadas.items.length);
+  console.log('Marcas:', BRANDS.length);
 }
 
 main().catch(err => {
