@@ -2,8 +2,8 @@ name: Sync Catálogo
 
 on:
   schedule:
-    - cron: '0 6 * * *' # Roda todos os dias às 06:00 UTC (03:00 Brasília)
-  workflow_dispatch:      # Permite rodar manualmente clicando em um botão
+    - cron: '0 6 * * *' # Roda todos os dias às 06:00 UTC
+  workflow_dispatch:      # Permite rodar manualmente
 
 jobs:
   sync:
@@ -17,7 +17,10 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Rodar o Scraper
+      - name: Instalar Dependências
+        run: npm install
+
+      - name: Rodar o Scraper (com navegador fantasma)
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
