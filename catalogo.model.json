@@ -13,10 +13,7 @@
             "disponivel": "Sim",
             "notas": "Acabamento matte, longa duração, 12h. Tons: 01 a 10.",
             "foto": "https://via.placeholder.com/300x300?text=Base",
-            "fotos": [
-              "https://via.placeholder.com/300x300?text=Base",
-              "https://via.placeholder.com/300x300?text=Base+2"
-            ],
+            "fotos": ["https://via.placeholder.com/300x300?text=Base"],
             "badge": "NOVO"
           }
         ]
@@ -35,12 +32,8 @@
     "tagline": "Maquiagem e Cosméticos — Varejo e Atacado"
   },
   "META": {
-    "updated_at": "2026-11-02T22:00:00-03:00",
+    "updated_at": "2026-11-04T00:00:00-03:00",
     "source": "manual",
-    "version": 1,
-    "price_rules": {
-      "varejoMarkup": 1.90,
-      "atacadoMarkup": 1.50
-    }
+    "version": 2
   }
 }
