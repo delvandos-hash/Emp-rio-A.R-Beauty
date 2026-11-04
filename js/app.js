@@ -6,7 +6,7 @@
 
 // Fonte principal: Gist (atualiza sem redeploy Netlify)
 // Fallback: arquivo local do deploy
-const GIST_RAW_URL = ''; // cole aqui a URL raw do catalogo.json no Gist
+const GIST_RAW_URL = 'https://gist.githubusercontent.com/delvandos-hash/081d1d5efa2e2003cf859964a650dfb5/raw/catalogo.json';
 const CATALOG_URLS = [
   ...(GIST_RAW_URL ? [GIST_RAW_URL] : []),
   '/catalogo.json'
