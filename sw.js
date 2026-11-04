@@ -1,5 +1,12 @@
-const CACHE = 'ar-beauty-v3';
-const PRECACHE = ['/manifest.webmanifest', '/assets/logo.jpg', '/assets/icon-192.png'];
+const CACHE = 'ar-beauty-v4';
+const PRECACHE = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/assets/logo.jpg',
+  '/assets/icon-192.png',
+  '/catalogo.json',
+];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(
@@ -19,7 +26,6 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
 
-  // Network-first for HTML, JS, JSON and API
   const networkFirst =
     url.pathname === '/' ||
     url.pathname.endsWith('.html') ||
@@ -42,7 +48,6 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  // Cache-first for static assets
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request).then(res => {
       const copy = res.clone();
