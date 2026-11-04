@@ -2,7 +2,7 @@
  * Empório A.R. Beauty — Catálogo completo
  * Gist + interações tipo perfumes + destaques + marcas
  */
-const GIST_RAW_URL = 'https://gist.githubusercontent.com/delvandos-hash/081d1d5efa2e2003cf859964a650dfb5/raw/catalogo.json';
+const GIST_RAW_URL = 'https://gist.githubusercontent.com/delvandos-hash/ecc1bd47819ee300db14cdac8cfc0482/raw/b44c14045c519b12d5c29d861c23dfd27e423849/catalogo.json';
 const CATALOG_URLS = [GIST_RAW_URL, '/catalogo.json'];
 const PAGE_SIZE = 48;
 const STOCK_CACHE_MS = 10 * 60 * 1000;
