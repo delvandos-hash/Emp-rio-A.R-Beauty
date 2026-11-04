@@ -1,16 +1,18 @@
 /**
  * sync-catalog.mjs — MakiMakes → catalogo.public.json
+ * Usando Puppeteer para contornar JavaScript do site.
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import puppeteer from 'puppeteer';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SITEMAP_URL = 'https://www.makimakesoficial.com.br/sitemap.xml';
 const MAX_PRODUCTS = parseInt(process.env.MAX_PRODUCTS || '0', 10) || Infinity;
-const CONCURRENCY = parseInt(process.env.CONCURRENCY || '3', 10); // Baixo para não bloquear
-const DELAY_MS = parseInt(process.env.DELAY_MS || '300', 10);
+const CONCURRENCY = parseInt(process.env.CONCURRENCY || '2', 10);
+const DELAY_MS = parseInt(process.env.DELAY_MS || '500', 10);
 
 const LINE_MAP = {
   'base': 'rosto', 'corretivo': 'rosto', 'pó': 'rosto', 'po': 'rosto', 'primer': 'rosto', 'blush': 'rosto', 'contorno': 'rosto', 'iluminador': 'rosto', 'multifuncional': 'rosto',
@@ -53,7 +55,7 @@ function mapLine(category, name = '') {
 function extractVolume(name) { const m = name.match(/(\d+\s*(?:un|unid|ml|g|kg|pcs|pçs?))\b/i); return m ? m[1].replace(/\s+/g, '').toUpperCase() : ''; }
 
 async function fetchText(url) {
-  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 'Accept': 'text/html', 'Accept-Language': 'pt-BR,pt;q=0.9' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
 }
@@ -73,78 +75,71 @@ function extractJsonLdProduct(html) {
   return null;
 }
 
-/** 
- * EXTRAIR VARIAÇÕES (Estratégia Agressiva) 
- */
-function extractVariations(html) {
-  const variations = [];
-  
-  // 1. Tenta achar blocos de JSON do Shopify/Magento escondidos no HTML
-  // Procura por: {"option1": "Tom 01", "price": "10.00"} ou variações de "variants"
-  const jsonVariantRegex = /"variant"\s*:\s*\{[^}]*"title"\s*:\s*"([^"]+)"[^}]*\}/gi;
-  let match;
-  while ((match = jsonVariantRegex.exec(html)) !== null) {
-    const nome = unescapeHtml(match[1]);
-    if (nome && nome !== 'Default Title' && !nome.includes('null')) {
-      variations.push({ id: nome, nome, estoque: 10 });
-    }
-  }
-
-  // 2. Tenta achar tags <select> (padrão para opções de produto)
-  const selectRegex = /<select[^>]*name="([^"]*(?:tamanho|cor|tom|opcao|variacao)[^"]*)"[^>]*>([\s\S]*?)<\/select>/gi;
-  while ((match = selectRegex.exec(html)) !== null) {
-    const options = [...match[2].matchAll(/<option[^>]*value="([^"]*)"[^>]*>([^<]+)<\/option>/gi)];
-    for (const opt of options) {
-      const val = opt[1].trim();
-      const label = opt[2].trim();
-      if (val && !val.toLowerCase().includes('selecione') && !val.toLowerCase().includes('choose')) {
-        variations.push({ id: val, nome: label, estoque: 10 });
-      }
-    }
-  }
-
-  // 3. Tenta achar botões de variação (padrão de algumas plataformas como a Tray)
-  // Ex: <a class="opcao-cor" data-value="Tom 01">Tom 01</a>
-  const btnRegex = /data-(?:variacao|option|cor|tom)=["']([^"']+)["'][^>]*>([^<]+)<\/button>/gi;
-  while ((match = btnRegex.exec(html)) !== null) {
-    variations.push({ id: match[1], nome: match[2].trim(), estoque: 10 });
-  }
-
-  // Limpa duplicatas e retorna
-  const unique = [];
-  const map = new Set();
-  for (const v of variations) {
-    if (!map.has(v.nome)) { map.add(v.nome); unique.push(v); }
-  }
-  
-  return unique.slice(0, 20); // Retorna no máximo 20 opções para não estourar a tela
-}
-
-async function fetchGroupSlugs(groupUrl) {
+// --- PAGINAÇÃO INTELIGENTE COM PUPPETEER ---
+async function fetchGroupSlugsWithPuppeteer(groupUrl) {
   const set = new Set();
-  let page = 1;
-  let hasMore = true;
-
-  while (hasMore) {
-    try {
-      const url = page === 1 ? groupUrl : `${groupUrl}?page=${page}`;
-      const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' } });
-      if (!res.ok) break;
+  const browser = await puppeteer.launch({ headless: 'new' });
+  const page = await browser.newPage();
+  
+  try {
+    console.log(`  Abrindo vitrine: ${groupUrl}`);
+    await page.goto(groupUrl, { waitUntil: 'networkidle2', timeout: 60000 });
+    
+    let hasNextPage = true;
+    let pageNum = 1;
+    
+    while (hasNextPage && pageNum <= 10) {
+      console.log(`    Lendo página ${pageNum}...`);
       
-      const html = await res.text();
-      const re = /href="([^"]+\/p)"/g;
-      let m;
+      // Extrai os links dos produtos da tela atual
+      const links = await page.evaluate(() => {
+        const arr = [];
+        document.querySelectorAll('a[href$="/p"]').forEach(a => arr.push(a.href));
+        return arr;
+      });
+      
       let countBefore = set.size;
-
-      while ((m = re.exec(html))) {
-        let slug = m[1].replace(/^https?:\/\/www\.makimakesoficial\.com\.br\//, '').replace(/^\//, '');
+      links.forEach(url => {
+        let slug = url.replace(/^https?:\/\/www\.makimakesoficial\.com\.br\//, '').replace(/^\//, '');
         if (slug.endsWith('/p')) set.add(slug);
-      }
+      });
+      
+      console.log(`    -> Total acumulado: ${set.size} produtos.`);
+      
+      // Se não encontrou produtos novos, para.
+      if (set.size === countBefore && pageNum > 1) break;
 
-      if (set.size === countBefore) { hasMore = false; }
-      else { page++; await sleep(1500); }
-    } catch (e) { hasMore = false; }
+      // Tenta achar o botão de "Próxima Página" ou "Carregar mais"
+      const clickedNext = await page.evaluate(() => {
+        const elements = Array.from(document.querySelectorAll('a, button'));
+        const nextBtn = elements.find(el => {
+          const txt = (el.textContent || '').toLowerCase().trim();
+          const aria = (el.getAttribute('aria-label') || '').toLowerCase();
+          return txt === 'próximo' || txt === 'próxima' || txt === '>' || txt === '»' || txt.includes('carregar mais') || aria.includes('próxima') || aria.includes('next');
+        });
+        
+        if (nextBtn && !nextBtn.disabled && !nextBtn.classList.contains('disabled')) {
+          nextBtn.click();
+          return true;
+        }
+        return false;
+      });
+      
+      if (clickedNext) {
+        console.log(`    Clicou em "Próxima". Aguardando carregar...`);
+        await sleep(3000); // Espera a página carregar os novos itens
+        pageNum++;
+      } else {
+        console.log(`    Fim da paginação (botão próximo não encontrado ou desabilitado).`);
+        hasNextPage = false;
+      }
+    }
+  } catch (e) {
+    console.warn(`  Erro ao paginar vitrine: ${e.message}`);
+  } finally {
+    await browser.close();
   }
+  
   return set;
 }
 
@@ -153,9 +148,13 @@ async function getProductUrlsFromSitemap() {
   return [...xml.matchAll(/<loc>(https:\/\/www\.makimakesoficial\.com\.br\/[^<]+\/p)<\/loc>/g)].map(m => m[1]);
 }
 
-async function processProduct(url, specialMaps = {}) {
+// --- SCRAPER DE PRODUTO COM PUPPETEER ---
+async function processProduct(url, page, specialMaps = {}) {
   try {
-    const html = await fetchText(url);
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+    await sleep(1000);
+
+    const html = await page.content();
     const p = extractJsonLdProduct(html);
     if (!p) return null;
 
@@ -185,12 +184,30 @@ async function processProduct(url, specialMaps = {}) {
     desc = desc.replace(/Atacado/gi, '').replace(/Varejo/gi, '').replace(/\s+/g, ' ').trim();
     if (desc.toLowerCase() === name.toLowerCase()) desc = '';
 
-    // EXTRAI AS VARIAÇÕES AQUI
-    const variacoes = extractVariations(html);
-    
-    if (variacoes.length > 0) {
-      console.log(`  ✅ Variações encontradas em: ${name.slice(0, 30)}... (${variacoes.length})`);
-    }
+    // Extrai variações via Puppeteer (só se a página tiver botões de opção)
+    const variacoes = await page.evaluate(() => {
+      const vars = [];
+      document.querySelectorAll('select').forEach(sel => {
+        const name = sel.name.toLowerCase();
+        if (name.includes('tamanho') || name.includes('cor') || name.includes('tom') || name.includes('variacao')) {
+          sel.querySelectorAll('option').forEach(opt => {
+            if (opt.value && !opt.text.toLowerCase().includes('selecione')) {
+              vars.push({ id: opt.value, nome: opt.text.trim(), estoque: 10 });
+            }
+          });
+        }
+      });
+      document.querySelectorAll('button[data-variant], button[data-option], .swatch-element').forEach(btn => {
+        const nome = btn.getAttribute('data-variant') || btn.getAttribute('data-option') || btn.textContent.trim();
+        if (nome && nome.length < 30) vars.push({ id: nome, nome: nome, estoque: 10 });
+      });
+      const unique = [];
+      const map = new Set();
+      for (const v of vars) {
+        if (!map.has(v.nome)) { map.add(v.nome); unique.push(v); }
+      }
+      return unique.slice(0, 20);
+    });
 
     const baseItem = {
       nome: name, volume: volume, varejo: isBox ? null : prices.varejo, atacado: prices.atacado,
@@ -204,20 +221,9 @@ async function processProduct(url, specialMaps = {}) {
       internalItem: { ...baseItem, sourceUrl: url, basePrice: formatPrice(basePrice) },
       publicItem: baseItem
     };
-  } catch (e) { return null; }
-}
-
-async function runPool(urls, concurrency, fn) {
-  const results = []; let idx = 0;
-  async function worker() {
-    while (idx < urls.length) {
-      const i = idx++; const r = await fn(urls[i]);
-      if (r) results.push(r);
-      await sleep(DELAY_MS);
-    }
+  } catch (e) { 
+    return null; 
   }
-  await Promise.all(Array.from({ length: concurrency }, () => worker()));
-  return results;
 }
 
 function buildOutputs(raw, specialGroups) {
@@ -229,10 +235,8 @@ function buildOutputs(raw, specialGroups) {
     if (!groupsByLine[r.line]) groupsByLine[r.line] = {};
     const key = `${r.brand}||${r.cat}`;
     if (!groupsByLine[r.line][key]) groupsByLine[r.line][key] = { cat: r.cat, brand: r.brand, items: [], publicItems: [] };
-    
     groupsByLine[r.line][key].items.push(r.internalItem);
     groupsByLine[r.line][key].publicItems.push(r.publicItem);
-    
     if (r.specialKey && destaquesInternal[r.specialKey]) {
       destaquesInternal[r.specialKey].push({ ...r.internalItem, brand: r.brand, cat: r.cat, line: r.line });
       destaquesPublic[r.specialKey].push({ ...r.publicItem, brand: r.brand, cat: r.cat, line: r.line });
@@ -263,43 +267,55 @@ function buildOutputs(raw, specialGroups) {
 }
 
 async function main() {
-  console.log('=== Sync Catálogo ===');
+  console.log('=== Sync Catálogo (Puppeteer) ===');
+  
+  // 1. Puxa vitrines de forma inteligente
   const specialMaps = {};
   for (const [key, cfg] of Object.entries(SPECIAL_GROUPS)) {
     console.log('Buscando vitrine:', cfg.title);
-    specialMaps[key] = await fetchGroupSlugs(cfg.url);
-    console.log(`  ✅ Total final da vitrine: ${specialMaps[key].size} produtos encontrados.`);
+    specialMaps[key] = await fetchGroupSlugsWithPuppeteer(cfg.url);
+    console.log(`  ✅ Total final da vitrine: ${specialMaps[key].size} produtos.`);
   }
 
+  // 2. Puxa sitemap (produtos normais)
   let urls = await getProductUrlsFromSitemap();
   for (const set of Object.values(specialMaps)) { for (const slug of set) { const full = 'https://www.makimakesoficial.com.br/' + slug; if (!urls.includes(full)) urls.push(full); } }
   if (MAX_PRODUCTS < Infinity) urls = urls.slice(0, MAX_PRODUCTS);
 
-  console.log(`\nProcessando ${urls.length} páginas de produtos...`);
-  const raw = await runPool(urls, CONCURRENCY, (url) => processProduct(url, specialMaps));
+  // 3. Processa cada produto
+  console.log(`\nProcessando ${urls.length} produtos...`);
+  const browser = await puppeteer.launch({ headless: 'new' });
+  const pages = await Promise.all(Array.from({ length: CONCURRENCY }, () => browser.newPage()));
+  const results = [];
   
-  const { internal, public: publicOutput, DATA_PUBLIC } = buildOutputs(raw, SPECIAL_GROUPS);
+  let idx = 0;
+  async function worker(page) {
+    while (idx < urls.length) {
+      const i = idx++;
+      const r = await processProduct(urls[i], page, specialMaps);
+      if (r) results.push(r);
+      await sleep(DELAY_MS);
+    }
+  }
+  
+  await Promise.all(pages.map(p => worker(p)));
+  await browser.close();
+
+  // 4. Salva os dados
+  const { internal, public: publicOutput, DATA_PUBLIC } = buildOutputs(results, SPECIAL_GROUPS);
 
   const dataDir = path.join(__dirname, '..', 'data');
   fs.mkdirSync(dataDir, { recursive: true });
   fs.writeFileSync(path.join(dataDir, 'catalogo.generated.json'), JSON.stringify(internal, null, 2));
-  
   const publicPath = path.join(dataDir, 'catalogo.public.json');
   fs.writeFileSync(publicPath, JSON.stringify(publicOutput, null, 2));
-  console.log('\n✅ Arquivo local gerado:', publicPath);
-
-  fs.mkdirSync(path.join(dataDir, 'linhas'), { recursive: true });
-  for (const [line, groups] of Object.entries(DATA_PUBLIC)) {
-    fs.writeFileSync(path.join(dataDir, 'linhas', `${line}.json`), JSON.stringify({ [line]: groups, WHATSAPP: publicOutput.WHATSAPP, BRAND: publicOutput.BRAND, DESTAQUES: publicOutput.DESTAQUES, BRANDS: publicOutput.BRANDS, META: publicOutput.META }, null, 2));
-  }
-
+  
   console.log('Destaques Lojas R$10:', publicOutput.DESTAQUES.lojas10.items.length);
   console.log('Destaques Ofertas:', publicOutput.DESTAQUES.ofertasLimitadas.items.length);
 
-  // Envio para o Gist
+  // 5. Envio para o Gist
   const gistId = process.env.GIST_ID;
   const gistToken = process.env.GIST_TOKEN;
-
   if (gistId && gistToken) {
     console.log('\n🚀 Enviando atualização para o Gist...');
     try {
@@ -309,13 +325,10 @@ async function main() {
         body: JSON.stringify({ files: { 'catalogo.json': { content: JSON.stringify(publicOutput, null, 2) } } })
       });
       if (!res.ok) throw new Error(await res.text());
-      console.log('🎉 Gist atualizado com sucesso! O site já vai puxar os novos dados.');
+      console.log('🎉 Gist atualizado com sucesso!');
     } catch (err) {
       console.error('❌ Erro ao atualizar o Gist:', err.message);
-      process.exit(1);
     }
-  } else {
-    console.log('⚠️ GIST_ID ou GIST_TOKEN não configurados. O Gist não foi atualizado.');
   }
 }
 
