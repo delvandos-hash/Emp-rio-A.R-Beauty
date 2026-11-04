@@ -1,11 +1,24 @@
 /**
  * Empório A.R. Beauty — Catálogo completo
  * Gist + interações tipo perfumes + destaques + marcas
+ *
+ * Correções aplicadas:
+ *  - parsePrice unificado via prices.js
+ *  - localStorage com try/catch
+ *  - JSON-LD com escape de </script> e price BRL
+ *  - canonical/og dinâmicos
+ *  - showDetailsAt atualiza histórico (replaceState)
+ *  - validação de CEP/nome no checkout
+ *  - onerror inline removido (listener global + data-fallback)
+ *  - acessibilidade: aria-pressed, aria-live, role=dialog, focus trap
  */
+import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
+
 const GIST_RAW_URL = 'https://gist.githubusercontent.com/delvandos-hash/ecc1bd47819ee300db14cdac8cfc0482/raw/b44c14045c519b12d5c29d861c23dfd27e423849/catalogo.json';
 const CATALOG_URLS = [GIST_RAW_URL, '/catalogo.json'];
 const PAGE_SIZE = 48;
 const STOCK_CACHE_MS = 10 * 60 * 1000;
+const CANONICAL_HOME = 'https://emporioar-beauty.netlify.app/';
 
 const LOCAL_FALLBACK = {
   DATA: {}, DESTAQUES: {}, BRANDS: [],
@@ -18,14 +31,9 @@ function escapeHtml(str) {
 }
 function decodeHtml(str) {
   if (!str) return '';
-  const t = document.createElement('textarea'); t.innerHTML = str; return t.value;
-}
-function parsePrice(str) {
-  if (!str) return 0;
-  return parseFloat(String(str).replace(/\./g,'').replace(',','.')) || 0;
-}
-function formatPrice(n) {
-  return Number(n).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const t = document.createElement('textarea');
+  t.innerHTML = str;
+  return t.value;
 }
 function normId(s) {
   return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'');
@@ -42,6 +50,45 @@ function unitPrice(p, qty) {
   return { price: parsePrice(p.varejo), tipo: 'Varejo' };
 }
 
+// ---------- SEO: canonical + OG dinâmicos ----------
+function setCanonical(url) {
+  let l = document.querySelector('link[rel="canonical"]');
+  if (!l) { l = document.createElement('link'); l.rel = 'canonical'; document.head.appendChild(l); }
+  l.href = url;
+}
+function setMeta(selector, content) {
+  let m = document.querySelector(selector);
+  if (!m) return;
+  m.setAttribute('content', content);
+}
+function updateSeoForProduct(p) {
+  const canonicalUrl = window.location.href;
+  setCanonical(canonicalUrl);
+  setMeta('meta[property="og:url"]', canonicalUrl);
+  setMeta('meta[property="og:title"]', displayName(p.nome) + ' | Empório A.R. Beauty');
+  setMeta('meta[property="og:description"]', (decodeHtml(p.notas||'').slice(0, 150)) || displayName(p.nome));
+  if (p.foto) setMeta('meta[property="og:image"]', p.foto);
+}
+function resetSeoToHome() {
+  setCanonical(CANONICAL_HOME);
+  setMeta('meta[property="og:url"]', CANONICAL_HOME);
+  setMeta('meta[property="og:title"]', 'Empório A.R. Beauty | Catálogo de Maquiagem');
+  setMeta('meta[property="og:description"]', 'Catálogo online de maquiagens e cosméticos. Preços de varejo e atacado. Pedido pelo WhatsApp.');
+}
+
+// ---------- storage seguro ----------
+function safeGet(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw == null) return fallback;
+    return JSON.parse(raw) ?? fallback;
+  } catch { return fallback; }
+}
+function safeSet(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+// ---------- load ----------
 async function loadCatalogData() {
   for (const url of CATALOG_URLS) {
     try {
@@ -67,14 +114,22 @@ let filterPreco = 'all';
 let sortBy = 'default';
 let filterBrand = '';
 let page = 1;
-const favorites = new Set(JSON.parse(localStorage.getItem('fav_maquiagem') || '[]'));
-let cart = JSON.parse(localStorage.getItem('cart_maquiagem') || '{}');
+const favorites = new Set(safeGet('fav_maquiagem', []));
+let cart = safeGet('cart_maquiagem', {});
 const stockCache = new Map();
 let allProductsCache = null;
 let detailsNavList = [];
 let detailsNavIndex = 0;
 let detailsScrollY = 0;
 let buyProduct = null;
+
+// ---------- listener global de erro de imagem ----------
+document.addEventListener('error', (e) => {
+  const img = e.target;
+  if (img && img.tagName === 'IMG' && img.dataset.fallback && img.src !== img.dataset.fallback) {
+    img.src = img.dataset.fallback;
+  }
+}, true);
 
 function getAllProducts() {
   if (allProductsCache) return allProductsCache;
@@ -117,8 +172,9 @@ function sortProducts(list) {
   return arr;
 }
 
+// ---------- cart ----------
 function saveCart() {
-  localStorage.setItem('cart_maquiagem', JSON.stringify(cart));
+  safeSet('cart_maquiagem', cart);
   updateCartBadge();
 }
 function updateCartBadge() {
@@ -151,6 +207,7 @@ function cartTotals() {
   return { subtotal, totalItems, lines };
 }
 
+// ---------- stock ----------
 async function checkLiveStock(p) {
   const url = p.sourceUrl;
   if (!url) return p.disponivel;
@@ -166,6 +223,7 @@ async function checkLiveStock(p) {
   } catch { return p.disponivel; }
 }
 
+// ---------- card ----------
 function cardHtml(p) {
   const id = productId(p);
   const isFav = favorites.has(id);
@@ -187,9 +245,9 @@ function cardHtml(p) {
     : `<div><span class="price-label">Varejo</span><span class="price-v">R$ ${escapeHtml(p.varejo)}</span></div>
        <div><span class="price-label">Atacado (6+)</span><span class="price-a">R$ ${escapeHtml(p.atacado)}</span></div>`;
   return `<article class="card" data-id="${eid}">
-    <button class="fav ${isFav?'active':''}" data-fav="${eid}" aria-label="Favoritar">♥</button>
+    <button class="fav ${isFav?'active':''}" data-fav="${eid}" aria-label="Favoritar" aria-pressed="${isFav?'true':'false'}">♥</button>
     <div class="photo" data-open="${eid}">${badgeHtml}
-      <img src="${foto}" alt="${nome}" width="72" height="72" loading="lazy" onerror="this.src='https://via.placeholder.com/150?text=Sem+foto'"/>
+      <img src="${foto}" alt="${nome}" width="72" height="72" loading="lazy" data-fallback="https://via.placeholder.com/150?text=Sem+foto"/>
     </div>
     <div class="info">
       <div class="name" data-open="${eid}">${nome}</div>
@@ -209,9 +267,9 @@ function bindCardEvents(root) {
     btn.addEventListener('click', e => {
       e.stopPropagation();
       const id = btn.dataset.fav;
-      if (favorites.has(id)) { favorites.delete(id); btn.classList.remove('active'); }
-      else { favorites.add(id); btn.classList.add('active'); }
-      localStorage.setItem('fav_maquiagem', JSON.stringify([...favorites]));
+      if (favorites.has(id)) { favorites.delete(id); btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); }
+      else { favorites.add(id); btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); }
+      safeSet('fav_maquiagem', [...favorites]);
     });
   });
   root.querySelectorAll('[data-open],[data-details]').forEach(el => {
@@ -230,6 +288,7 @@ function bindCardEvents(root) {
   });
 }
 
+// ---------- destaques ----------
 function renderDestaques() {
   const host = document.getElementById('destaquesHost');
   if (!host) return;
@@ -254,6 +313,7 @@ function renderDestaques() {
   bindCardEvents(host);
 }
 
+// ---------- marcas ----------
 function renderBrandChips() {
   const box = document.getElementById('brandChips');
   if (!box) return;
@@ -269,6 +329,7 @@ function renderBrandChips() {
   });
 }
 
+// ---------- products ----------
 function renderProducts(resetPage=true) {
   if (resetPage) page = 1;
   const container = document.getElementById('products');
@@ -293,6 +354,7 @@ function renderProducts(resetPage=true) {
   bindCardEvents(container);
 }
 
+// ---------- details ----------
 function openDetails(p, opts={}) {
   if (!opts.fromNav) {
     detailsScrollY = window.scrollY || 0;
@@ -321,7 +383,7 @@ function openDetails(p, opts={}) {
       <button type="button" class="nav-btn" id="detNext" ${detailsNavIndex>=detailsNavList.length-1?'disabled':''}>›</button>
     </div>
     <div class="details-photo">
-      <img src="${mainFoto}" alt="${nome}" id="detailsMainImg" width="280" height="280" onerror="this.src='https://via.placeholder.com/400?text=Sem+foto'"/>
+      <img src="${mainFoto}" alt="${nome}" id="detailsMainImg" width="280" height="280" data-fallback="https://via.placeholder.com/400?text=Sem+foto"/>
       ${thumbs?`<div class="details-thumbs">${thumbs}</div>`:''}
     </div>
     <h3 class="details-title">${nome}</h3>
@@ -345,6 +407,7 @@ function openDetails(p, opts={}) {
     const url = new URL(window.location.href);
     url.searchParams.set('produto', productId(p));
     history.pushState({ emporioModal: true }, '', url.pathname + url.search);
+    updateSeoForProduct(p);
   } catch(_){}
   checkLiveStock(p).then(disp => {
     const el = document.getElementById('detailsStock');
@@ -360,27 +423,51 @@ function openDetails(p, opts={}) {
 function showDetailsAt(index, direction) {
   if (index < 0 || index >= detailsNavList.length) return;
   detailsNavIndex = index;
-  openDetails(detailsNavList[index], { fromNav: true });
+  const p = detailsNavList[index];
+  openDetails(p, { fromNav: true });
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('produto', productId(p));
+    history.replaceState({ emporioModal: true }, '', url.pathname + url.search);
+    updateSeoForProduct(p);
+  } catch(_){}
 }
 
 function injectProductJsonLd(p) {
   let el = document.getElementById('product-jsonld');
-  if (!el) { el = document.createElement('script'); el.type='application/ld+json'; el.id='product-jsonld'; document.head.appendChild(el); }
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = 'product-jsonld';
+    document.head.appendChild(el);
+  }
   const price = p.somenteAtacado ? p.atacado : p.varejo;
-  el.textContent = JSON.stringify({
-    '@context':'https://schema.org','@type':'Product',
-    name: displayName(p.nome), image: p.foto||'', description: decodeHtml(p.notas||displayName(p.nome)),
+  const payload = {
+    '@context':'https://schema.org',
+    '@type':'Product',
+    name: displayName(p.nome),
+    image: p.foto || '',
+    description: decodeHtml(p.notas||displayName(p.nome)),
     brand: { '@type':'Brand', name: p.brand||'' },
-    offers: { '@type':'Offer', priceCurrency:'BRL', price:String(parsePrice(price)),
-      availability: (p.disponivel||'').toLowerCase()==='sim'?'https://schema.org/InStock':'https://schema.org/OutOfStock' }
-  });
+    offers: {
+      '@type':'Offer',
+      priceCurrency:'BRL',
+      price: formatPrice(parsePrice(price)),
+      availability: (p.disponivel||'').toLowerCase()==='sim'?'https://schema.org/InStock':'https://schema.org/OutOfStock'
+    }
+  };
+  // Escapa </script> para não fechar o bloco prematuramente
+  el.textContent = JSON.stringify(payload).replace(/</g, '\\u003c');
 }
 
+// ---------- buy ----------
 function openBuyModal(p) {
   buyProduct = p;
   document.getElementById('buyProductName').textContent = displayName(p.nome);
   document.getElementById('buyProductMeta').textContent = `${p.brand||''} · ${p.volume||''} · ${p.cat||''}`;
   document.getElementById('buyQty').value = '1';
+  document.getElementById('buyNome').value = '';
+  document.getElementById('buyCep').value = '';
   updateBuyPricePreview();
   openModal('buyModal');
 }
@@ -394,11 +481,19 @@ function updateBuyPricePreview() {
   if (!buyProduct.somenteAtacado && qty < 6) hint = `<span class="price-hint">Faltam ${6-qty} para preço de atacado</span>`;
   el.innerHTML = `<span class="price-tipo">${escapeHtml(tipo)}</span><span class="price-unit">R$ ${formatPrice(price)} / un</span><strong class="price-sub">Subtotal: R$ ${formatPrice(price*qty)}</strong>${hint}`;
 }
+function validateCheckout(nome, cep) {
+  const nomeOk = (nome || '').trim().length >= 2;
+  const cepOk  = (cep  || '').replace(/\D/g,'').length === 8;
+  if (!nomeOk) { showToast('Informe seu nome (mín. 2 letras).'); return false; }
+  if (!cepOk)  { showToast('CEP inválido (8 dígitos).'); return false; }
+  return true;
+}
 function confirmBuy() {
   if (!buyProduct) return;
   const nome = document.getElementById('buyNome')?.value?.trim()||'';
   const cep = document.getElementById('buyCep')?.value?.trim()||'';
   const qty = parseInt(document.getElementById('buyQty')?.value||'1',10)||1;
+  if (!validateCheckout(nome, cep)) return;
   const { price, tipo } = unitPrice(buyProduct, qty);
   let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n*${displayName(buyProduct.nome)}*\n${buyProduct.brand||''} · ${buyProduct.volume||''}\nQtd: ${qty}\nPreço (${tipo}): R$ ${formatPrice(price)}\nSubtotal: R$ ${formatPrice(price*qty)}\n\n`;
   if (nome) msg += `Nome: ${nome}\n`;
@@ -407,6 +502,7 @@ function confirmBuy() {
   closeModal('buyModal');
 }
 
+// ---------- cart render ----------
 function renderCart() {
   const list = document.getElementById('cartList');
   const summary = document.getElementById('cartSummary');
@@ -419,7 +515,7 @@ function renderCart() {
   }
   list.innerHTML = lines.map(({id,p,qty,price,tipo,lineTotal}) =>
     `<div class="cart-item">
-      <img src="${escapeHtml(p.foto||'')}" alt="" width="52" height="52" onerror="this.style.display='none'"/>
+      <img src="${escapeHtml(p.foto||'')}" alt="" width="52" height="52" data-fallback="https://via.placeholder.com/52?text=?"/>
       <div class="cart-item-info">
         <div class="cart-item-name">${escapeHtml(displayName(p.nome))}</div>
         <div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(tipo)}</div>
@@ -441,11 +537,13 @@ function openCart() {
   renderCart();
   document.getElementById('cartOverlay')?.classList.add('open');
   document.getElementById('cartPanel')?.classList.add('open');
+  document.getElementById('cartPanel')?.setAttribute('aria-hidden','false');
   document.body.style.overflow = 'hidden';
 }
 function closeCart() {
   document.getElementById('cartOverlay')?.classList.remove('open');
   document.getElementById('cartPanel')?.classList.remove('open');
+  document.getElementById('cartPanel')?.setAttribute('aria-hidden','true');
   if (!document.querySelector('.modal.open')) document.body.style.overflow = '';
 }
 function openCartCheckout() {
@@ -456,6 +554,8 @@ function openCartCheckout() {
     summaryEl.innerHTML = lines.map(l=>`• ${escapeHtml(displayName(l.p.nome).slice(0,40))} — ${l.qty}x R$ ${formatPrice(l.price)} (${escapeHtml(l.tipo)}) = R$ ${formatPrice(l.lineTotal)}`).join('<br>')
       + `<br><br><strong>Total (${totalItems} itens): R$ ${formatPrice(subtotal)}</strong>`;
   }
+  document.getElementById('checkoutNome').value = '';
+  document.getElementById('checkoutCep').value = '';
   openModal('checkoutModal'); closeCart();
 }
 function confirmCartCheckout() {
@@ -463,6 +563,7 @@ function confirmCartCheckout() {
   const cep = document.getElementById('checkoutCep')?.value?.trim()||'';
   const { lines, subtotal, totalItems } = cartTotals();
   if (!lines.length) return;
+  if (!validateCheckout(nome, cep)) return;
   let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n`;
   for (const l of lines) {
     msg += `• *${displayName(l.p.nome)}*\n  ${l.p.brand||''} — ${l.qty}x R$ ${formatPrice(l.price)} (${l.tipo}) = R$ ${formatPrice(l.lineTotal)}\n\n`;
@@ -474,30 +575,40 @@ function confirmCartCheckout() {
   closeModal('checkoutModal');
 }
 
+// ---------- modal helpers ----------
 function openModal(id) {
-  document.getElementById(id)?.classList.add('open');
+  const m = document.getElementById(id);
+  if (!m) return;
+  m.classList.add('open');
+  m.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
+  const focusable = m.querySelector('button, [href], input, select, textarea');
+  focusable?.focus();
 }
 function closeModal(id) {
-  document.getElementById(id)?.classList.remove('open');
+  const m = document.getElementById(id);
+  m?.classList.remove('open');
+  m?.setAttribute('aria-hidden','true');
   if (!document.querySelector('.modal.open, #cartPanel.open')) document.body.style.overflow = '';
   if (id === 'detailsModal') {
     try {
       const url = new URL(window.location.href);
       url.searchParams.delete('produto');
       history.replaceState({}, '', url.pathname + url.search);
+      resetSeoToHome();
     } catch(_){}
     requestAnimationFrame(() => window.scrollTo(0, detailsScrollY||0));
   }
 }
 function showToast(msg) {
   let t = document.getElementById('toast');
-  if (!t) { t=document.createElement('div'); t.id='toast'; document.body.appendChild(t); }
+  if (!t) { t=document.createElement('div'); t.id='toast'; t.setAttribute('role','status'); t.setAttribute('aria-live','polite'); document.body.appendChild(t); }
   t.textContent = msg; t.classList.add('show');
   clearTimeout(showToast._timer);
   showToast._timer = setTimeout(()=>t.classList.remove('show'), 2400);
 }
 
+// ---------- swipe ----------
 function initSwipeDetails() {
   const overlay = document.getElementById('detailsModal');
   if (!overlay || overlay.dataset.swipeReady) return;
@@ -540,7 +651,7 @@ function initSwipeDetails() {
   box.addEventListener('touchend', e => onEnd(e.changedTouches[0].clientY, e.changedTouches[0].clientX), {passive:true});
 }
 
-// Events
+// ---------- events ----------
 document.getElementById('tabs')?.addEventListener('click', e => {
   const btn = e.target.closest('.tab'); if (!btn) return;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -572,10 +683,24 @@ window.addEventListener('popstate', () => {
   if (document.getElementById('detailsModal')?.classList.contains('open')) closeModal('detailsModal');
 });
 document.addEventListener('keydown', e => {
+  const openModalEl = document.querySelector('.modal.open');
+  if (openModalEl) {
+    if (e.key === 'Escape') {
+      const id = openModalEl.id;
+      if (id) closeModal(id);
+    }
+    // focus trap básico
+    if (e.key === 'Tab') {
+      const focusables = openModalEl.querySelectorAll('button, [href], input, select, textarea');
+      if (!focusables.length) return;
+      const first = focusables[0], last = focusables[focusables.length-1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
   if (!document.getElementById('detailsModal')?.classList.contains('open')) return;
   if (e.key === 'ArrowRight') showDetailsAt(detailsNavIndex+1,'left');
   if (e.key === 'ArrowLeft') showDetailsAt(detailsNavIndex-1,'right');
-  if (e.key === 'Escape') closeModal('detailsModal');
 });
 
 function openProductFromUrl() {
