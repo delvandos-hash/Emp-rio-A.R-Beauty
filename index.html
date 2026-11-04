@@ -264,7 +264,6 @@
       padding: 2rem;
       color: var(--muted);
     }
-    /* Dark theme support (media or class) */
     @media (prefers-color-scheme: dark) {
       :root {
         --text: #e5e7eb;
@@ -277,8 +276,7 @@
       .search input, .filter-select { background: #1f2937; color: var(--text); border-color: var(--border); }
       .btn-details { background: #374151; color: #e5e7eb; }
     }
-  
-    /* Cart header button */
+
     .btn-cart-header {
       position: relative;
       background: rgba(255,255,255,.15);
@@ -310,7 +308,6 @@
       padding: 0 4px;
     }
 
-    /* Cart panel */
     #cartOverlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,.45);
@@ -377,7 +374,6 @@
     }
     .btn-wa:hover { background: var(--wa-dark); }
 
-    /* Modals */
     .modal {
       position: fixed; inset: 0; z-index: 500;
       display: flex; align-items: flex-end; justify-content: center;
@@ -428,7 +424,6 @@
     .modal-actions .btn-wa { flex: 1; padding: 0.75rem; }
     .modal-actions .btn-outline { flex: 0.7; }
 
-    /* Toast */
     #toast {
       position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
       background: #111; color: #fff; padding: 0.7rem 1.2rem; border-radius: 999px;
@@ -444,82 +439,30 @@
       #buyPricePreview, #checkoutSummary { background: #111827; }
     }
 
-  
-    /* Details modal */
-    .details-photo {
-      text-align: center;
-      margin-bottom: 0.85rem;
-    }
+    .details-photo { text-align: center; margin-bottom: 0.85rem; }
     .details-photo > img {
-      width: 100%;
-      max-width: 280px;
-      max-height: 280px;
-      object-fit: contain;
-      border-radius: 12px;
-      background: #f3f4f6;
+      width: 100%; max-width: 280px; max-height: 280px; object-fit: contain;
+      border-radius: 12px; background: #f3f4f6;
     }
-    .details-thumbs {
-      display: flex;
-      gap: 6px;
-      justify-content: center;
-      margin-top: 8px;
-      flex-wrap: wrap;
-    }
+    .details-thumbs { display: flex; gap: 6px; justify-content: center; margin-top: 8px; flex-wrap: wrap; }
     .details-thumbs img {
-      width: 48px;
-      height: 48px;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 2px solid transparent;
-      cursor: pointer;
+      width: 48px; height: 48px; object-fit: cover; border-radius: 8px;
+      border: 2px solid transparent; cursor: pointer;
     }
     .details-thumbs img:hover { border-color: var(--primary); }
-    .details-title {
-      font-size: 1rem;
-      font-weight: 700;
-      line-height: 1.3;
-      margin-bottom: 0.25rem;
-    }
-    .details-meta {
-      font-size: 0.8rem;
-      color: var(--muted);
-      margin-bottom: 0.75rem;
-    }
-    .details-price {
-      display: flex;
-      gap: 1.2rem;
-      margin-bottom: 0.85rem;
-      font-size: 0.95rem;
-    }
-    .details-price .price-label {
-      display: block;
-      font-size: 0.65rem;
-      text-transform: uppercase;
-      color: var(--muted);
-    }
+    .details-title { font-size: 1rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.25rem; }
+    .details-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 0.75rem; }
+    .details-price { display: flex; gap: 1.2rem; margin-bottom: 0.85rem; font-size: 0.95rem; }
+    .details-price .price-label { display: block; font-size: 0.65rem; text-transform: uppercase; color: var(--muted); }
     .details-price .price-a { color: #059669; font-weight: 700; }
-    .details-desc {
-      font-size: 0.88rem;
-      line-height: 1.5;
-      color: var(--text);
-      margin-bottom: 1rem;
-      white-space: pre-wrap;
-    }
-    .details-actions {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-    }
+    .details-desc { font-size: 0.88rem; line-height: 1.5; color: var(--text); margin-bottom: 1rem; white-space: pre-wrap; }
+    .details-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .details-actions .btn-sm { padding: 0.5rem 1rem; font-size: 0.82rem; }
-
-  
     .details-stock { font-size: 0.82rem; margin-bottom: 0.6rem; }
     .stock-ok { color: #059669; font-weight: 600; }
     .stock-out { color: #dc2626; font-weight: 600; }
     .stock-check { color: var(--muted); font-size: 0.75rem; }
 
-  
-    /* Ocultar badge / HUD Netlify por completo */
     [data-netlify-site-id],
     .netlify-badge,
     #netlify-badge,
@@ -538,7 +481,6 @@
       overflow: hidden !important;
     }
 
-  
     .btn-brands {
       border: 1px solid var(--border);
       background: #fff;
@@ -549,64 +491,26 @@
       cursor: pointer;
       margin-right: 0.5rem;
     }
-    .brand-panel {
-      display: none;
-      max-width: 1180px;
-      margin: 0 auto;
-      padding: 0.5rem 1rem 0.75rem;
-    }
+    .brand-panel { display: none; max-width: 1180px; margin: 0 auto; padding: 0.5rem 1rem 0.75rem; }
     .brand-panel.open { display: block; }
-    .brand-panel-head {
-      font-size: 0.8rem;
-      font-weight: 700;
-      margin-bottom: 0.45rem;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .04em;
-    }
-    .brand-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
-    }
-    .brand-chip {
-      border: 1px solid var(--border);
-      background: #fff;
-      border-radius: 999px;
-      padding: 0.35rem 0.75rem;
-      font-size: 0.75rem;
-      cursor: pointer;
-    }
-    .brand-chip.active {
-      background: var(--primary);
-      color: #fff;
-      border-color: var(--primary);
-    }
+    .brand-panel-head { font-size: 0.8rem; font-weight: 700; margin-bottom: 0.45rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .brand-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .brand-chip { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 0.35rem 0.75rem; font-size: 0.75rem; cursor: pointer; }
+    .brand-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
     .vitrine-section { max-width: 1180px; margin: 0.5rem auto 1rem; padding: 0 0 0.5rem; }
     .vitrine-head { padding: 0 1rem 0.5rem; }
     .vitrine-head h2 { font-size: 1rem; }
     .vitrine-track {
-      display: flex;
-      gap: 0.75rem;
-      overflow-x: auto;
-      padding: 0.25rem 1rem 0.75rem;
-      scroll-snap-type: x mandatory;
-      -webkit-overflow-scrolling: touch;
+      display: flex; gap: 0.75rem; overflow-x: auto; padding: 0.25rem 1rem 0.75rem;
+      scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch;
     }
     .vitrine-card { flex: 0 0 min(280px, 82vw); scroll-snap-align: start; }
     .vitrine-card .card { height: 100%; }
     .section-block { max-width: 1180px; margin: 0 auto 1rem; padding: 0 1rem; }
     .section-title { font-size: 1.05rem; margin: 0.5rem 0 0.75rem; }
     .section-grid { display: grid; gap: 0.75rem; grid-template-columns: 1fr; }
-    @media (min-width: 640px) {
-      .section-grid { grid-template-columns: 1fr 1fr; }
-    }
-    .details-nav {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 0.6rem;
-    }
+    @media (min-width: 640px) { .section-grid { grid-template-columns: 1fr 1fr; } }
+    .details-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.6rem; }
     .nav-btn {
       width: 36px; height: 36px; border-radius: 50%;
       border: 1px solid var(--border); background: #fff;
@@ -615,7 +519,6 @@
     .nav-btn:disabled { opacity: 0.35; }
     .nav-pos { font-size: 0.8rem; color: var(--muted); }
     .photo, .name { cursor: pointer; }
-
   </style>
 
   <script type="application/ld+json">
@@ -633,7 +536,7 @@
 <body>
   <header>
     <a href="/" class="brand">
-      <img src="assets/logo.jpg" alt="Logo" onerror="this.style.display='none'" />
+      <img src="assets/logo.jpg" alt="Logo" data-fallback="" />
       <div>
         <h1>Empório A.R. Beauty</h1>
         <span>Maquiagem · Varejo e Atacado</span>
@@ -697,10 +600,8 @@
     <p>Catálogo digital · Preços sujeitos a alteração</p>
   </footer>
 
-  
-  <!-- Cart -->
   <div id="cartOverlay"></div>
-  <aside id="cartPanel" aria-label="Carrinho">
+  <aside id="cartPanel" aria-label="Carrinho" aria-hidden="true">
     <div class="cart-header">
       <span>Seu pedido</span>
       <button type="button" id="btnCloseCart" aria-label="Fechar">✕</button>
@@ -709,12 +610,11 @@
     <div id="cartSummary"></div>
   </aside>
 
-  <!-- Buy modal (single product) -->
-  <div class="modal" id="buyModal">
+  <div class="modal" id="buyModal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Comprar">
     <div class="modal-box">
       <div class="modal-header">
         <h2>Comprar</h2>
-        <button type="button" class="modal-close" data-close="buyModal">✕</button>
+        <button type="button" class="modal-close" data-close="buyModal" aria-label="Fechar">✕</button>
       </div>
       <p id="buyProductName" style="font-weight:650;margin-bottom:2px"></p>
       <p id="buyProductMeta" class="meta" style="font-size:.8rem;color:var(--muted);margin-bottom:12px"></p>
@@ -729,7 +629,7 @@
       </div>
       <div class="form-group">
         <label for="buyCep">CEP</label>
-        <input type="text" id="buyCep" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" />
+        <input type="text" id="buyCep" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" />
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-outline" data-close="buyModal">Cancelar</button>
@@ -738,12 +638,11 @@
     </div>
   </div>
 
-  <!-- Checkout modal (full cart) -->
-  <div class="modal" id="checkoutModal">
+  <div class="modal" id="checkoutModal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Finalizar pedido">
     <div class="modal-box">
       <div class="modal-header">
         <h2>Finalizar pedido</h2>
-        <button type="button" class="modal-close" data-close="checkoutModal">✕</button>
+        <button type="button" class="modal-close" data-close="checkoutModal" aria-label="Fechar">✕</button>
       </div>
       <div id="checkoutSummary"></div>
       <div class="form-group">
@@ -752,7 +651,7 @@
       </div>
       <div class="form-group">
         <label for="checkoutCep">CEP</label>
-        <input type="text" id="checkoutCep" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" />
+        <input type="text" id="checkoutCep" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" />
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-outline" data-close="checkoutModal">Voltar</button>
@@ -761,17 +660,15 @@
     </div>
   </div>
 
-  <!-- Details modal -->
-  <div class="modal" id="detailsModal">
+  <div class="modal" id="detailsModal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Detalhes do produto">
     <div class="modal-box">
       <div class="modal-header">
         <h2>Detalhes</h2>
-        <button type="button" class="modal-close" data-close="detailsModal">✕</button>
+        <button type="button" class="modal-close" data-close="detailsModal" aria-label="Fechar">✕</button>
       </div>
       <div id="detailsContent"></div>
     </div>
   </div>
-
 
   <a href="#" id="fabWhatsApp" class="fab-wa" aria-label="WhatsApp">💬</a>
   <script type="module" src="js/app.js"></script>
