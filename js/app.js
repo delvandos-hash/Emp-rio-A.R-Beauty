@@ -1,20 +1,9 @@
 /**
  * Empório A.R. Beauty — Catálogo completo
- * Gist + interações tipo perfumes + destaques + marcas
- *
- * Correções aplicadas:
- *  - parsePrice unificado via prices.js
- *  - localStorage com try/catch
- *  - JSON-LD com escape de </script> e price BRL
- *  - canonical/og dinâmicos
- *  - showDetailsAt atualiza histórico (replaceState)
- *  - validação de CEP/nome no checkout
- *  - onerror inline removido (listener global + data-fallback)
- *  - acessibilidade: aria-pressed, aria-live, role=dialog, focus trap
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
-const GIST_RAW_URL = 'https://gist.githubusercontent.com/delvandos-hash/ecc1bd47819ee300db14cdac8cfc0482/raw/b44c14045c519b12d5c29d861c23dfd27e423849/catalogo.json';
+const GIST_RAW_URL = 'https://gist.githubusercontent.com/delvandos-hash/081d1d5efa2e2003cf859964a650dfb5/raw/catalogo.json';
 const CATALOG_URLS = [GIST_RAW_URL, '/catalogo.json'];
 const PAGE_SIZE = 48;
 const STOCK_CACHE_MS = 10 * 60 * 1000;
@@ -50,7 +39,6 @@ function unitPrice(p, qty) {
   return { price: parsePrice(p.varejo), tipo: 'Varejo' };
 }
 
-// ---------- SEO: canonical + OG dinâmicos ----------
 function setCanonical(url) {
   let l = document.querySelector('link[rel="canonical"]');
   if (!l) { l = document.createElement('link'); l.rel = 'canonical'; document.head.appendChild(l); }
@@ -76,7 +64,6 @@ function resetSeoToHome() {
   setMeta('meta[property="og:description"]', 'Catálogo online de maquiagens e cosméticos. Preços de varejo e atacado. Pedido pelo WhatsApp.');
 }
 
-// ---------- storage seguro ----------
 function safeGet(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -88,7 +75,6 @@ function safeSet(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
-// ---------- load ----------
 async function loadCatalogData() {
   for (const url of CATALOG_URLS) {
     try {
@@ -112,7 +98,6 @@ let searchTerm = '';
 let filterDisp = 'all';
 let filterPreco = 'all';
 let sortBy = 'default';
-let filterBrand = '';
 let page = 1;
 const favorites = new Set(safeGet('fav_maquiagem', []));
 let cart = safeGet('cart_maquiagem', {});
@@ -122,8 +107,8 @@ let detailsNavList = [];
 let detailsNavIndex = 0;
 let detailsScrollY = 0;
 let buyProduct = null;
+let currentProduct = null; // Para gerenciar variações no modal
 
-// ---------- listener global de erro de imagem ----------
 document.addEventListener('error', (e) => {
   const img = e.target;
   if (img && img.tagName === 'IMG' && img.dataset.fallback && img.src !== img.dataset.fallback) {
@@ -149,7 +134,6 @@ function findProduct(id) {
 }
 function matchesFilters(p) {
   if (currentLine !== 'all' && p.line !== currentLine) return false;
-  if (filterBrand && (p.brand || '').toLowerCase() !== filterBrand.toLowerCase()) return false;
   if (searchTerm) {
     const q = searchTerm.toLowerCase();
     const hay = `${p.nome} ${p.brand} ${p.cat} ${p.volume}`.toLowerCase();
@@ -172,7 +156,6 @@ function sortProducts(list) {
   return arr;
 }
 
-// ---------- cart ----------
 function saveCart() {
   safeSet('cart_maquiagem', cart);
   updateCartBadge();
@@ -183,7 +166,7 @@ function updateCartBadge() {
   if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
 }
 function addToCart(p, qty=1) {
-  const id = productId(p);
+  const id = productId(p) + (p.variacaoSelecionada ? '|' + p.variacaoSelecionada.nome : '');
   if (cart[id]) cart[id].qty += qty; else cart[id] = { product: p, qty };
   saveCart();
   showToast('Adicionado: ' + displayName(p.nome).slice(0,42));
@@ -207,7 +190,6 @@ function cartTotals() {
   return { subtotal, totalItems, lines };
 }
 
-// ---------- stock ----------
 async function checkLiveStock(p) {
   const url = p.sourceUrl;
   if (!url) return p.disponivel;
@@ -223,7 +205,6 @@ async function checkLiveStock(p) {
   } catch { return p.disponivel; }
 }
 
-// ---------- card ----------
 function cardHtml(p) {
   const id = productId(p);
   const isFav = favorites.has(id);
@@ -288,7 +269,6 @@ function bindCardEvents(root) {
   });
 }
 
-// ---------- destaques ----------
 function renderDestaques() {
   const host = document.getElementById('destaquesHost');
   if (!host) return;
@@ -313,23 +293,6 @@ function renderDestaques() {
   bindCardEvents(host);
 }
 
-// ---------- marcas ----------
-function renderBrandChips() {
-  const box = document.getElementById('brandChips');
-  if (!box) return;
-  const brands = BRANDS.length ? BRANDS : [...new Set(getAllProducts().map(p=>p.brand).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  box.innerHTML = `<button type="button" class="brand-chip ${!filterBrand?'active':''}" data-brand="">Todas</button>` +
-    brands.map(b => `<button type="button" class="brand-chip ${filterBrand===b?'active':''}" data-brand="${escapeHtml(b)}">${escapeHtml(b)}</button>`).join('');
-  box.querySelectorAll('[data-brand]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      filterBrand = btn.dataset.brand || '';
-      renderBrandChips();
-      renderProducts(true);
-    });
-  });
-}
-
-// ---------- products ----------
 function renderProducts(resetPage=true) {
   if (resetPage) page = 1;
   const container = document.getElementById('products');
@@ -354,7 +317,40 @@ function renderProducts(resetPage=true) {
   bindCardEvents(container);
 }
 
-// ---------- details ----------
+/** Constrói os botões de variação se existirem no JSON */
+function buildVariacoesHtml(p) {
+  const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
+  if (!vars.length) return '';
+  const chips = vars.map(v => {
+    const ok = v.estoque === undefined || Number(v.estoque) > 0;
+    const id = String(v.id || v.nome || '');
+    const label = escapeHtml(v.nome || '—');
+    const disabled = ok ? '' : ' disabled';
+    return `<button type="button" class="var-chip" data-var-id="${id}" data-var-nome="${label}"${disabled}>
+      <span class="var-chip-name">${label}</span>
+    </button>`;
+  }).join('');
+  return `<div class="variacoes-box" id="variacoesBox">
+    <strong>Escolha a opção:</strong>
+    <div class="var-chips">${chips}</div>
+  </div>`;
+}
+
+function bindVariacaoSelector(p) {
+  const box = document.getElementById('variacoesBox');
+  if (!box) return;
+  box.querySelectorAll('.var-chip:not([disabled])').forEach(btn => {
+    btn.addEventListener('click', () => {
+      box.querySelectorAll('.var-chip').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      p.variacaoSelecionada = {
+        id: btn.getAttribute('data-var-id') || '',
+        nome: btn.getAttribute('data-var-nome') || ''
+      };
+    });
+  });
+}
+
 function openDetails(p, opts={}) {
   if (!opts.fromNav) {
     detailsScrollY = window.scrollY || 0;
@@ -362,6 +358,9 @@ function openDetails(p, opts={}) {
     detailsNavList = filtered;
     detailsNavIndex = Math.max(0, filtered.findIndex(x => productId(x)===productId(p)));
   }
+  currentProduct = p;
+  p.variacaoSelecionada = null; // Reseta ao abrir
+  
   const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.foto ? [p.foto] : []);
   const mainFoto = escapeHtml(fotos[0]||'');
   const desc = escapeHtml(decodeHtml(p.notas||'').trim() || 'Sem descrição adicional.');
@@ -375,7 +374,12 @@ function openDetails(p, opts={}) {
     : `<div class="details-price"><div><span class="price-label">Varejo</span><span class="price-v">R$ ${escapeHtml(p.varejo)}</span></div>
        <div><span class="price-label">Atacado (6+)</span><span class="price-a">R$ ${escapeHtml(p.atacado)}</span></div></div>`;
   const thumbs = fotos.slice(1).map((f,i)=>`<img src="${escapeHtml(f)}" alt="" width="48" height="48" loading="lazy" data-full="${escapeHtml(f)}"/>`).join('');
+  
   injectProductJsonLd(p);
+  
+  // Monta HTML incluindo as variações (se houver)
+  const variacoesHtml = buildVariacoesHtml(p);
+
   document.getElementById('detailsContent').innerHTML = `
     <div class="details-nav">
       <button type="button" class="nav-btn" id="detPrev" ${detailsNavIndex<=0?'disabled':''}>‹</button>
@@ -390,16 +394,40 @@ function openDetails(p, opts={}) {
     <p class="details-meta">${brand} · ${volume} · ${cat}</p>
     <p class="details-stock" id="detailsStock">${dispInicial?'<span class="stock-ok">● Disponível</span>':'<span class="stock-out">● Esgotado</span>'}<span class="stock-check"> · verificando…</span></p>
     ${precoHtml}
-    <p class="details-desc">${desc}</p>
+    ${variacoesHtml}
+    <p class="details-desc" style="margin-top:1rem">${desc}</p>
     <div class="details-actions">
       <button class="btn-sm btn-cart" id="detailsAddCart">Carrinho</button>
       <button class="btn-sm btn-buy" id="detailsBuy">Comprar</button>
     </div>`;
+    
   document.querySelectorAll('.details-thumbs img').forEach(img => {
     img.addEventListener('click', () => { const m=document.getElementById('detailsMainImg'); if(m) m.src=img.dataset.full||img.src; });
   });
-  document.getElementById('detailsAddCart')?.addEventListener('click', () => { addToCart(p,1); closeModal('detailsModal'); });
-  document.getElementById('detailsBuy')?.addEventListener('click', () => { closeModal('detailsModal'); openBuyModal(p); });
+  
+  // Bind nos botões de variação
+  bindVariacaoSelector(p);
+
+  // Ação de adicionar ao carrinho checando variação
+  document.getElementById('detailsAddCart')?.addEventListener('click', () => {
+    if (p.variacoes && p.variacoes.length > 0 && !p.variacaoSelecionada) {
+      showToast('Selecione uma opção antes de adicionar.');
+      return;
+    }
+    addToCart(p,1); 
+    closeModal('detailsModal'); 
+  });
+  
+  // Ação de comprar checando variação
+  document.getElementById('detailsBuy')?.addEventListener('click', () => { 
+    if (p.variacoes && p.variacoes.length > 0 && !p.variacaoSelecionada) {
+      showToast('Selecione uma opção antes de comprar.');
+      return;
+    }
+    closeModal('detailsModal'); 
+    openBuyModal(p); 
+  });
+  
   document.getElementById('detPrev')?.addEventListener('click', () => showDetailsAt(detailsNavIndex-1,'right'));
   document.getElementById('detNext')?.addEventListener('click', () => showDetailsAt(detailsNavIndex+1,'left'));
   openModal('detailsModal');
@@ -456,15 +484,14 @@ function injectProductJsonLd(p) {
       availability: (p.disponivel||'').toLowerCase()==='sim'?'https://schema.org/InStock':'https://schema.org/OutOfStock'
     }
   };
-  // Escapa </script> para não fechar o bloco prematuramente
   el.textContent = JSON.stringify(payload).replace(/</g, '\\u003c');
 }
 
-// ---------- buy ----------
 function openBuyModal(p) {
   buyProduct = p;
+  const metaText = `${p.brand||''} · ${p.volume||''} · ${p.cat||''}`;
   document.getElementById('buyProductName').textContent = displayName(p.nome);
-  document.getElementById('buyProductMeta').textContent = `${p.brand||''} · ${p.volume||''} · ${p.cat||''}`;
+  document.getElementById('buyProductMeta').textContent = metaText;
   document.getElementById('buyQty').value = '1';
   document.getElementById('buyNome').value = '';
   document.getElementById('buyCep').value = '';
@@ -495,14 +522,16 @@ function confirmBuy() {
   const qty = parseInt(document.getElementById('buyQty')?.value||'1',10)||1;
   if (!validateCheckout(nome, cep)) return;
   const { price, tipo } = unitPrice(buyProduct, qty);
-  let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n*${displayName(buyProduct.nome)}*\n${buyProduct.brand||''} · ${buyProduct.volume||''}\nQtd: ${qty}\nPreço (${tipo}): R$ ${formatPrice(price)}\nSubtotal: R$ ${formatPrice(price*qty)}\n\n`;
+  
+  let varText = buyProduct.variacaoSelecionada ? `\nVariação: ${buyProduct.variacaoSelecionada.nome}` : '';
+  
+  let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n*${displayName(buyProduct.nome)}*${varText}\n${buyProduct.brand||''} · ${buyProduct.volume||''}\nQtd: ${qty}\nPreço (${tipo}): R$ ${formatPrice(price)}\nSubtotal: R$ ${formatPrice(price*qty)}\n\n`;
   if (nome) msg += `Nome: ${nome}\n`;
   if (cep) msg += `CEP: ${cep}\n`;
   window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
   closeModal('buyModal');
 }
 
-// ---------- cart render ----------
 function renderCart() {
   const list = document.getElementById('cartList');
   const summary = document.getElementById('cartSummary');
@@ -513,16 +542,19 @@ function renderCart() {
     if (summary) summary.innerHTML = '';
     return;
   }
-  list.innerHTML = lines.map(({id,p,qty,price,tipo,lineTotal}) =>
-    `<div class="cart-item">
+  list.innerHTML = lines.map(({id,p,qty,price,tipo,lineTotal}) => {
+    let varHtml = p.variacaoSelecionada ? `<br><span style="font-size:0.75rem;color:#6b7280">Opção: ${escapeHtml(p.variacaoSelecionada.nome)}</span>` : '';
+    return `
+    <div class="cart-item">
       <img src="${escapeHtml(p.foto||'')}" alt="" width="52" height="52" data-fallback="https://via.placeholder.com/52?text=?"/>
       <div class="cart-item-info">
         <div class="cart-item-name">${escapeHtml(displayName(p.nome))}</div>
-        <div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(tipo)}</div>
+        <div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(tipo)}${varHtml}</div>
         <div class="cart-item-price">R$ ${formatPrice(price)} × <input type="number" min="1" value="${qty}" data-qty="${escapeHtml(id)}" class="cart-qty"/> = <strong>R$ ${formatPrice(lineTotal)}</strong></div>
       </div>
       <button class="cart-remove" data-remove="${escapeHtml(id)}" aria-label="Remover">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   if (summary) {
     summary.innerHTML = `<div class="cart-total"><span>${totalItems} item(ns)</span><strong>Total: R$ ${formatPrice(subtotal)}</strong></div>
       <div class="cart-actions"><button type="button" class="btn-outline" id="btnClearCart">Limpar pedido</button>
@@ -551,7 +583,10 @@ function openCartCheckout() {
   if (!lines.length) return;
   const summaryEl = document.getElementById('checkoutSummary');
   if (summaryEl) {
-    summaryEl.innerHTML = lines.map(l=>`• ${escapeHtml(displayName(l.p.nome).slice(0,40))} — ${l.qty}x R$ ${formatPrice(l.price)} (${escapeHtml(l.tipo)}) = R$ ${formatPrice(l.lineTotal)}`).join('<br>')
+    summaryEl.innerHTML = lines.map(l=>{
+      let v = l.p.variacaoSelecionada ? ` (${escapeHtml(l.p.variacaoSelecionada.nome)})` : '';
+      return `• ${escapeHtml(displayName(l.p.nome).slice(0,30))}${v} — ${l.qty}x R$ ${formatPrice(l.price)} (${escapeHtml(l.tipo)}) = R$ ${formatPrice(l.lineTotal)}`;
+    }).join('<br>')
       + `<br><br><strong>Total (${totalItems} itens): R$ ${formatPrice(subtotal)}</strong>`;
   }
   document.getElementById('checkoutNome').value = '';
@@ -566,7 +601,8 @@ function confirmCartCheckout() {
   if (!validateCheckout(nome, cep)) return;
   let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n`;
   for (const l of lines) {
-    msg += `• *${displayName(l.p.nome)}*\n  ${l.p.brand||''} — ${l.qty}x R$ ${formatPrice(l.price)} (${l.tipo}) = R$ ${formatPrice(l.lineTotal)}\n\n`;
+    let v = l.p.variacaoSelecionada ? ` (${l.p.variacaoSelecionada.nome})` : '';
+    msg += `• *${displayName(l.p.nome)}*${v}\n  ${l.p.brand||''} — ${l.qty}x R$ ${formatPrice(l.price)} (${l.tipo}) = R$ ${formatPrice(l.lineTotal)}\n\n`;
   }
   msg += `*Total (${totalItems} itens): R$ ${formatPrice(subtotal)}*\n\n`;
   if (nome) msg += `Nome: ${nome}\n`;
@@ -575,7 +611,6 @@ function confirmCartCheckout() {
   closeModal('checkoutModal');
 }
 
-// ---------- modal helpers ----------
 function openModal(id) {
   const m = document.getElementById(id);
   if (!m) return;
@@ -608,7 +643,6 @@ function showToast(msg) {
   showToast._timer = setTimeout(()=>t.classList.remove('show'), 2400);
 }
 
-// ---------- swipe ----------
 function initSwipeDetails() {
   const overlay = document.getElementById('detailsModal');
   if (!overlay || overlay.dataset.swipeReady) return;
@@ -651,7 +685,6 @@ function initSwipeDetails() {
   box.addEventListener('touchend', e => onEnd(e.changedTouches[0].clientY, e.changedTouches[0].clientX), {passive:true});
 }
 
-// ---------- events ----------
 document.getElementById('tabs')?.addEventListener('click', e => {
   const btn = e.target.closest('.tab'); if (!btn) return;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -675,10 +708,6 @@ document.getElementById('fabWhatsApp')?.addEventListener('click', () => {
   if (cartTotals().lines.length) { openCart(); return; }
   window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent('Olá! Vim pelo catálogo Empório A.R. Beauty e gostaria de atendimento.')}`,'_blank');
 });
-document.getElementById('btnToggleBrands')?.addEventListener('click', () => {
-  const panel = document.getElementById('brandPanel');
-  if (panel) panel.classList.toggle('open');
-});
 window.addEventListener('popstate', () => {
   if (document.getElementById('detailsModal')?.classList.contains('open')) closeModal('detailsModal');
 });
@@ -689,7 +718,6 @@ document.addEventListener('keydown', e => {
       const id = openModalEl.id;
       if (id) closeModal(id);
     }
-    // focus trap básico
     if (e.key === 'Tab') {
       const focusables = openModalEl.querySelectorAll('button, [href], input, select, textarea');
       if (!focusables.length) return;
@@ -714,7 +742,6 @@ function openProductFromUrl() {
 
 updateCartBadge();
 renderDestaques();
-renderBrandChips();
 renderProducts(true);
 initSwipeDetails();
 openProductFromUrl();
