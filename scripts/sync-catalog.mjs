@@ -77,8 +77,8 @@ const LINE_MAP = {
 // Regras de preço — AJUSTE CONFORME SUA MARGEM
 // Preço do site = base (geralmente pack de 12/24 un)
 const PRICE_RULES = {
-  varejoMarkup: 1.90,
-  atacadoMarkup: 1.50,
+  varejoMarkup: 2.50,
+  atacadoMarkup: 2.00,
 };
 
 // ========== HELPERS ==========

@@ -4,7 +4,13 @@
  * Regras comerciais (markup, box=só atacado) preservadas.
  */
 
-const CATALOG_URLS = ['/catalogo.json'];
+// Fonte principal: Gist (atualiza sem redeploy Netlify)
+// Fallback: arquivo local do deploy
+const GIST_RAW_URL = ''; // cole aqui a URL raw do catalogo.json no Gist
+const CATALOG_URLS = [
+  ...(GIST_RAW_URL ? [GIST_RAW_URL] : []),
+  '/catalogo.json'
+];
 const PAGE_SIZE = 48;
 const STOCK_CACHE_MS = 10 * 60 * 1000;
 

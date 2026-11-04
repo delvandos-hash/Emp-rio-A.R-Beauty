@@ -518,6 +518,26 @@
     .stock-out { color: #dc2626; font-weight: 600; }
     .stock-check { color: var(--muted); font-size: 0.75rem; }
 
+  
+    /* Ocultar badge / HUD Netlify por completo */
+    [data-netlify-site-id],
+    .netlify-badge,
+    #netlify-badge,
+    #nf-banner,
+    .nf-banner,
+    iframe[src*="netlify"],
+    a[href*="netlify.com"][target="_blank"],
+    body > div[id*="netlify" i],
+    body > a[href*="netlify"] {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+    }
+
   </style>
 
   <script type="application/ld+json">
