@@ -1469,19 +1469,20 @@
           {
             "nome": "BODY SPLASH GLOW PESSEGUISSIMO 120ML DAPOP DP2352",
             "volume": "120ML",
-            "varejo": "25,30",
-            "atacado": "20,24",
+            "varejo": "28,34",
+            "atacado": "25,30",
             "disponivel": "Sim",
             "notas": "",
             "foto": "https://makimakes.jetassets.com.br/produto/13868-MAIN-59b0cdf6.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/13868-MAIN-59b0cdf6.png"
             ],
-            "badge": "",
+            "badge": "OFERTA",
             "gtin": "7899575903990",
             "sourceUrl": "https://www.makimakesoficial.com.br/body-splash-glow-pesseguissimo-120ml-dapop-dp2352/p",
             "basePrice": "10,12",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "ofertasLimitadas"
           },
           {
             "nome": "Body Splash Desodorante Corporal Bella Vita 120ml Dapop",
@@ -1834,19 +1835,20 @@
           {
             "nome": "CREME CORPORAL JUICE MELANCIA 100ML DERMACHEM 09230",
             "volume": "100ML",
-            "varejo": "21,70",
-            "atacado": "17,36",
+            "varejo": "24,30",
+            "atacado": "21,70",
             "disponivel": "Sim",
             "notas": "",
             "foto": "https://makimakes.jetassets.com.br/produto/109230-MAIN-5bebd8be.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/109230-MAIN-5bebd8be.png"
             ],
-            "badge": "",
+            "badge": "OFERTA",
             "gtin": "7908346903906",
             "sourceUrl": "https://www.makimakesoficial.com.br/creme-corporal-juice-melancia-100ml-dermachem-09230/p",
             "basePrice": "8,68",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "ofertasLimitadas"
           },
           {
             "nome": "CREME CORPORAL JUICE MORANGO 100G DERMACHEM 09241",
@@ -2537,18 +2539,19 @@
             "nome": "Base Líquida Matte 24un Femmeparis Ref. FR102 | Atacado",
             "volume": "24UN",
             "varejo": null,
-            "atacado": "308,16",
+            "atacado": "385,20",
             "disponivel": "Sim",
             "notas": "Display com 24 unidades da Base Líquida Matte Femmeparis ref. FR102. Alta cobertura, controle de oleosidade, alta rentabilidade e vendas por impulso no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/17624-MAIN-2d53db27.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/17624-MAIN-2d53db27.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7890265331024",
             "sourceUrl": "https://www.makimakesoficial.com.br/base-liquida-matte-24un-femmeparis-fr102/p",
             "basePrice": "154,08",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -3218,18 +3221,19 @@
             "nome": "Esponja Polvo Limpeza Facial Cores Sortidas 12un | Atacado",
             "volume": "12UN",
             "varejo": null,
-            "atacado": "62,16",
+            "atacado": "77,70",
             "disponivel": "Sim",
             "notas": "Display com 12 unidades de Esponja Polvo ref. DF-100-EP100005. Limpeza facial suave, design fofo e excelente rentabilidade para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/23208-MAIN-69af1a51.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/23208-MAIN-69af1a51.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7810000501017",
             "sourceUrl": "https://www.makimakesoficial.com.br/esponja-polvo-cores-sortidas-12un-china-df-100-ep100005/p",
             "basePrice": "31,08",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           },
           {
             "nome": "Esponja Mango 12un China MG-160 | Atacado",
@@ -4833,18 +4837,19 @@
             "nome": "Sérum Glow Love Mamão 36un Max Love | Atacado",
             "volume": "36UN",
             "varejo": null,
-            "atacado": "252,00",
+            "atacado": "315,00",
             "disponivel": "Sim",
             "notas": "Display com 36 unidades de Sérum Glow Love Mamão da Max Love. Hidratação, revitalização e excelente rentabilidade para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/14595-MAIN-9a9f9a41.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/14595-MAIN-9a9f9a41.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7908240522968",
             "sourceUrl": "https://www.makimakesoficial.com.br/serum-glow-love-mamao-36un-maxlove/p",
             "basePrice": "126,00",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -6873,18 +6878,19 @@
             "nome": "Lápis Contorno para Lábios 48un Pink 21 CS5128 | Atacado",
             "volume": "48UN",
             "varejo": null,
-            "atacado": "421,44",
+            "atacado": "526,80",
             "disponivel": "Sim",
             "notas": "Display com 48 unidades do Lápis Contorno para Lábios Pink 21 ref. CS5128. Alta fixação, traço preciso, alta rentabilidade e vendas por impulso no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/8595-MAIN-a687f82d.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/8595-MAIN-a687f82d.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "",
             "sourceUrl": "https://www.makimakesoficial.com.br/lapis-contorno-para-labios-48un-pink21-cs5128/p",
             "basePrice": "210,72",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -7638,18 +7644,19 @@
             "nome": "Paleta de Sombras Eye Shadow 24un Super Poderes RD-1805 | Atacado",
             "volume": "24UN",
             "varejo": null,
-            "atacado": "408,00",
+            "atacado": "510,00",
             "disponivel": "Sim",
             "notas": "Display com 24 unidades da Paleta de Sombras Eye Shadow Super Poderes RD-1805. Alta pigmentação, textura aveludada, formato compacto e excelente rentabilidade no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/1805-MAIN-81c4c10c.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/1805-MAIN-81c4c10c.png"
             ],
-            "badge": "",
+            "badge": "OFERTA",
             "gtin": "6972071001870",
             "sourceUrl": "https://www.makimakesoficial.com.br/paleta-de-sombras-eye-shadow-24un-super-poderes-rd-1805/p",
             "basePrice": "204,00",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "ofertasLimitadas"
           }
         ]
       },
@@ -7774,19 +7781,20 @@
           {
             "nome": "Lenço Demaquilante Babasuper Hortelã Superpoderes SP951 01 | Atacado",
             "volume": "",
-            "varejo": "14,25",
-            "atacado": "11,40",
+            "varejo": "15,96",
+            "atacado": "14,25",
             "disponivel": "Sim",
             "notas": "Pacote de Lenço Demaquilante Babasuper Hortelã ref. SP951 01 da Superpoderes. Limpeza refrescante, remoção eficaz e excelente rentabilidade para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/17521-MAIN-fc730ed0.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/17521-MAIN-fc730ed0.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7898416447471",
             "sourceUrl": "https://www.makimakesoficial.com.br/lencos-demaquilantes-babasuper-hortela-superpoderes-sp951-01/p",
             "basePrice": "5,70",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "lojas10"
           },
           {
             "nome": "Lenço Demaquilante Algodão Doce Super Poderes | Atacado",
@@ -8539,18 +8547,19 @@
             "nome": "Pó Solto Banana 12un Yvisiy VS2501 | Atacado",
             "volume": "12UN",
             "varejo": null,
-            "atacado": "88,44",
+            "atacado": "110,55",
             "disponivel": "Sim",
             "notas": "Display com 12 unidades do Pó Solto Banana Yvisiy ref. VS2501. Textura ultrafina, selagem impecável e excelente rentabilidade no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/24790-MAIN-7e5d9d89.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/24790-MAIN-7e5d9d89.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7908353617254",
             "sourceUrl": "https://www.makimakesoficial.com.br/po-solto-banana-12un-yvisiy-vs2501/p",
             "basePrice": "44,22",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -8585,18 +8594,19 @@
             "nome": "Pó Facial Banana 21un Zouh | Atacado",
             "volume": "21UN",
             "varejo": null,
-            "atacado": "163,39",
+            "atacado": "204,23",
             "disponivel": "Sim",
             "notas": "Display com 21 unidades do Pó Facial Banana Zouh. Textura ultrafina, efeito matificante, selagem de maquiagem, alta rentabilidade e vendas por impulso no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/21461-MAIN-c72dee2f.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/21461-MAIN-c72dee2f.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7898721161864",
             "sourceUrl": "https://www.makimakesoficial.com.br/po-facial-banana-21un-zouh/p",
             "basePrice": "81,69",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       }
@@ -9241,18 +9251,19 @@
             "nome": "Máscara Facial Peel Off Pérola Rosa 60un Bobbi Rara BRM-0264 | Atacado",
             "volume": "60UN",
             "varejo": null,
-            "atacado": "119,67",
+            "atacado": "149,57",
             "disponivel": "Sim",
             "notas": "Display com 60 unidades da Máscara Facial Peel Off Pérola Rosa Bobbi Rara ref. BRM-0264. Limpeza profunda, efeito iluminador e alta rentabilidade no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/6420-MAIN-a2d9ed3f.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/6420-MAIN-a2d9ed3f.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "",
             "sourceUrl": "https://www.makimakesoficial.com.br/mascara-facial-peel-off-perola-rosa-60un-bobbirara-brm-0264/p",
             "basePrice": "59,83",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -9383,19 +9394,20 @@
           {
             "nome": "ATIVADOR FACIAL DE LIMPEZA 120ML DERMACHEM",
             "volume": "120ML",
-            "varejo": "13,37",
-            "atacado": "10,69",
+            "varejo": "14,98",
+            "atacado": "13,38",
             "disponivel": "Sim",
             "notas": "",
             "foto": "https://makimakes.jetassets.com.br/produto/73201-MAIN-9630faaf.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/73201-MAIN-9630faaf.png"
             ],
-            "badge": "",
+            "badge": "OFERTA",
             "gtin": "7908346902039",
             "sourceUrl": "https://www.makimakesoficial.com.br/ativador-facial-de-limpeza-120ml-dermachem/p",
             "basePrice": "5,35",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "ofertasLimitadas"
           },
           {
             "nome": "SABONETE FACIAL VITAMINA C 100G DERMACHEM 06238",
@@ -9576,19 +9588,20 @@
           {
             "nome": "SABONETE DE BANHO JUICE MELANCIA 100ML DERMACHEM 09220",
             "volume": "100ML",
-            "varejo": "16,92",
-            "atacado": "13,53",
+            "varejo": "18,96",
+            "atacado": "16,92",
             "disponivel": "Sim",
             "notas": "",
             "foto": "https://makimakes.jetassets.com.br/produto/92201-MAIN-08a9deb5.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/92201-MAIN-08a9deb5.png"
             ],
-            "badge": "",
+            "badge": "OFERTA",
             "gtin": "7908346903982",
             "sourceUrl": "https://www.makimakesoficial.com.br/sabonete-de-banho-juice-melancia-100ml-dermachem-09220/p",
             "basePrice": "6,77",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "ofertasLimitadas"
           },
           {
             "nome": "SABONETE DE BANHO JUICE MORANGO 100ML DERMACHEM 09236",
@@ -10129,18 +10142,19 @@
             "nome": "Kit 10un Máscara Facial Stitch Surf | Ref M24-222 Atacado",
             "volume": "10UN",
             "varejo": null,
-            "atacado": "47,80",
+            "atacado": "59,75",
             "disponivel": "Sim",
             "notas": "Kit com 10 unidades de Máscara Facial Stitch Surf (Ref. M24-222). Hidratação, cuidado facial e design divertido. Perfeito para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/15496-MAIN-3fcd579f.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/15496-MAIN-3fcd579f.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "6972038415665",
             "sourceUrl": "https://www.makimakesoficial.com.br/mascara-facial-stitch-surf-10un-china-m24-222/p",
             "basePrice": "23,90",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -13334,19 +13348,20 @@
           {
             "nome": "Lenço Umedecido Pride Fenzza FZ50022 | Atacado",
             "volume": "",
-            "varejo": "14,75",
-            "atacado": "11,80",
+            "varejo": "16,52",
+            "atacado": "14,75",
             "disponivel": "Sim",
             "notas": "Lenço Umedecido Pride FZ50022 da Fenzza. Higiene prática, edição especial com design exclusivo e excelente rentabilidade para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/3039-MAIN-52d56ee2.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/3039-MAIN-52d56ee2.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7899360246561",
             "sourceUrl": "https://www.makimakesoficial.com.br/lenco-umedecido-pride-fenzza-fz50022/p",
             "basePrice": "5,90",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -13721,19 +13736,20 @@
           {
             "nome": "Lenço Demaquilante Rosa Mosqueta LD20 Griffty | Atacado",
             "volume": "",
-            "varejo": "13,65",
-            "atacado": "10,92",
+            "varejo": "15,29",
+            "atacado": "13,65",
             "disponivel": "Sim",
             "notas": "Pacote de Lenço Demaquilante Rosa Mosqueta ref. LD20 da Griffty. Limpeza profunda, ação regeneradora e excelente rentabilidade para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/21363-MAIN-02b37833.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/21363-MAIN-02b37833.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7898567396796",
             "sourceUrl": "https://www.makimakesoficial.com.br/lenco-umedecido-demaquilante-rosa-mosquetqueta-griffty-ld20/p",
             "basePrice": "5,46",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -13926,19 +13942,20 @@
           {
             "nome": "DEMAQUILANTE REMOVEDOR 500ML ISISMAKEUP IS037",
             "volume": "500ML",
-            "varejo": "17,55",
-            "atacado": "14,04",
+            "varejo": "19,66",
+            "atacado": "17,55",
             "disponivel": "Sim",
             "notas": "",
             "foto": "https://makimakes.jetassets.com.br/produto/24028-MAIN-be853f9f.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/24028-MAIN-be853f9f.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7898996078812",
             "sourceUrl": "https://www.makimakesoficial.com.br/agua-micelar-demaquilante-500ml-isismakeup-is037/p",
             "basePrice": "7,02",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "lojas10"
           },
           {
             "nome": "ÁGUA MICELAR ÁCIDO HIALURÔNICO 500ML ISISMAKEUP IS1115",
@@ -15606,18 +15623,19 @@
             "nome": "Necessaire Quadrada Fosca Pink 10un Aliah AL08 | Atacado",
             "volume": "10UN",
             "varejo": null,
-            "atacado": "105,07",
+            "atacado": "131,32",
             "disponivel": "Sim",
             "notas": "Kit com 10 necessaires quadradas foscas pink ref. AL08 da Aliah. Praticidade, design moderno e excelente rentabilidade para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/24685-MAIN-13f32793.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/24685-MAIN-13f32793.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7890114389985",
             "sourceUrl": "https://www.makimakesoficial.com.br/necessaire-quadrada-fosca-pink-10un-aliah-al08/p",
             "basePrice": "52,53",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -15651,19 +15669,20 @@
           {
             "nome": "ÁGUA MICELAR COLÁGENO 300ML ISISMAKEUP IS056",
             "volume": "300ML",
-            "varejo": "12,48",
-            "atacado": "9,99",
+            "varejo": "13,97",
+            "atacado": "12,48",
             "disponivel": "Sim",
             "notas": "",
             "foto": "https://makimakes.jetassets.com.br/produto/24023-MAIN-b25ed73b.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/24023-MAIN-b25ed73b.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7898721160782",
             "sourceUrl": "https://www.makimakesoficial.com.br/agua-micelar-colageno-300ml-isismakeup-is056/p",
             "basePrice": "4,99",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -18030,18 +18049,19 @@
             "nome": "Lip Gloss Choco Glow 36un Isis Makeup IS1151 | Atacado",
             "volume": "36UN",
             "varejo": null,
-            "atacado": "378,72",
+            "atacado": "473,40",
             "disponivel": "Sim",
             "notas": "Display com 36 unidades do Lip Gloss Choco Glow Isis Makeup ref. IS1151. Brilho espelhado, aroma de chocolate, hidratação e alta rentabilidade no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/24048-MAIN-7580f134.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/24048-MAIN-7580f134.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7898721164834",
             "sourceUrl": "https://www.makimakesoficial.com.br/lip-gloss-choco-glow-36un-isismakeup-is1151/p",
             "basePrice": "189,36",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           },
           {
             "nome": "Lip Gloss Brilho Intenso 36un Isis Makeup IS1143 A | Atacado",
@@ -19651,18 +19671,19 @@
             "nome": "BATOM /LIPSTICK CHARMLIPS 72UN RUBYROSE HB-L6001 G1",
             "volume": "72UN",
             "varejo": null,
-            "atacado": "889,20",
+            "atacado": "1111,50",
             "disponivel": "Sim",
             "notas": "",
             "foto": "https://makimakes.jetassets.com.br/produto/24915-MAIN-77f1eee5.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/24915-MAIN-77f1eee5.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "7900083021370",
             "sourceUrl": "https://www.makimakesoficial.com.br/batom-lipstick-charmlips-72un-rubyrose-hb-l6001-g1-2/p",
             "basePrice": "444,60",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -20407,18 +20428,19 @@
             "nome": "Lip Oil Fruits 36un Vivai 3432.1.1 | Atacado",
             "volume": "36UN",
             "varejo": null,
-            "atacado": "308,16",
+            "atacado": "385,20",
             "disponivel": "Sim",
             "notas": "Display com 36 unidades do Lip Oil Fruits Vivai ref. 3432.1.1. Hidratação profunda, aromas de frutas, efeito glossy, alta rentabilidade e vendas por impulso no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/24797-MAIN-dab50752.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/24797-MAIN-dab50752.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "",
             "sourceUrl": "https://www.makimakesoficial.com.br/lip-oil-fruits-36un-vivai-343211/p",
             "basePrice": "154,08",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "lojas10"
           },
           {
             "nome": "Lip Gloss Hug 1 a 6 36un Vivai 3415.1.1 | Atacado",
@@ -21216,19 +21238,20 @@
           {
             "nome": "Lápis de Boca Bobbi Rara | Atacado e Revenda",
             "volume": "",
-            "varejo": "286,80",
-            "atacado": "229,44",
+            "varejo": "321,22",
+            "atacado": "286,80",
             "disponivel": "Sim",
             "notas": "Lápis delineador para lábios Bobbi Rara. Alta pigmentação, traço macio, excelente fixação e alta rentabilidade para revenda no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/18024-MAIN-443482ba.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/18024-MAIN-443482ba.png"
             ],
-            "badge": "",
+            "badge": "LOJAS R$10",
             "gtin": "0070341756829",
             "sourceUrl": "https://www.makimakesoficial.com.br/lapis-labial-boca-48un-bobbirara-br-863/p",
             "basePrice": "114,72",
-            "somenteAtacado": false
+            "somenteAtacado": false,
+            "destaque": "lojas10"
           }
         ]
       },
@@ -21320,18 +21343,19 @@
             "nome": "Paleta de Sombras Rose Shine 12un Febella PS030315 | Atacado",
             "volume": "12UN",
             "varejo": null,
-            "atacado": "417,36",
+            "atacado": "521,70",
             "disponivel": "Sim",
             "notas": "Display com 12 unidades da Paleta de Sombras Rose Shine Febella PS030315. Tons rosados elegantes, acabamentos mate e cintilante e excelente rentabilidade no atacado.",
             "foto": "https://makimakes.jetassets.com.br/produto/30315-MAIN-55886678.png",
             "fotos": [
               "https://makimakes.jetassets.com.br/produto/30315-MAIN-55886678.png"
             ],
-            "badge": "",
+            "badge": "OFERTA",
             "gtin": "7898765081456",
             "sourceUrl": "https://www.makimakesoficial.com.br/paleta-de-sombras-rose-shine-12un-febella-ps030315/p",
             "basePrice": "208,68",
-            "somenteAtacado": true
+            "somenteAtacado": true,
+            "destaque": "ofertasLimitadas"
           },
           {
             "nome": "Paleta de Sombra Smile 24un Febella PSO30350 | Atacado",
@@ -23191,14 +23215,604 @@
     "updated_at": "2026-11-04",
     "source": "makimakesoficial.com.br",
     "total_products": 1236,
-    "version": 1,
+    "version": 2,
     "price_rules": {
       "varejoMarkup": 2.5,
-      "atacadoMarkup": 2.0,
-      "note": "150% varejo / 100% atacado"
+      "atacadoMarkup": 2,
+      "especiais": {
+        "lojas10": {
+          "varejoMarkup": 2.8,
+          "atacadoMarkup": 2.5
+        },
+        "ofertasLimitadas": {
+          "varejoMarkup": 2.8,
+          "atacadoMarkup": 2.5
+        }
+      }
     },
     "box_detection": "nome contém N UN ou Box",
     "somenteAtacado_count": 752,
     "com_varejo_count": 484
-  }
+  },
+  "DESTAQUES": {
+    "lojas10": {
+      "title": "Lojas de R$10,00",
+      "items": [
+        {
+          "nome": "Base Líquida Matte 24un Femmeparis Ref. FR102 | Atacado",
+          "volume": "24UN",
+          "varejo": null,
+          "atacado": "385,20",
+          "disponivel": "Sim",
+          "notas": "Display com 24 unidades da Base Líquida Matte Femmeparis ref. FR102. Alta cobertura, controle de oleosidade, alta rentabilidade e vendas por impulso no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/17624-MAIN-2d53db27.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/17624-MAIN-2d53db27.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7890265331024",
+          "sourceUrl": "https://www.makimakesoficial.com.br/base-liquida-matte-24un-femmeparis-fr102/p",
+          "basePrice": "154,08",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "FEMME PARIS",
+          "cat": "BASE",
+          "line": "rosto"
+        },
+        {
+          "nome": "Esponja Polvo Limpeza Facial Cores Sortidas 12un | Atacado",
+          "volume": "12UN",
+          "varejo": null,
+          "atacado": "77,70",
+          "disponivel": "Sim",
+          "notas": "Display com 12 unidades de Esponja Polvo ref. DF-100-EP100005. Limpeza facial suave, design fofo e excelente rentabilidade para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/23208-MAIN-69af1a51.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/23208-MAIN-69af1a51.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7810000501017",
+          "sourceUrl": "https://www.makimakesoficial.com.br/esponja-polvo-cores-sortidas-12un-china-df-100-ep100005/p",
+          "basePrice": "31,08",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "IMPORTADOS",
+          "cat": "ESPONJAS",
+          "line": "rosto"
+        },
+        {
+          "nome": "Sérum Glow Love Mamão 36un Max Love | Atacado",
+          "volume": "36UN",
+          "varejo": null,
+          "atacado": "315,00",
+          "disponivel": "Sim",
+          "notas": "Display com 36 unidades de Sérum Glow Love Mamão da Max Love. Hidratação, revitalização e excelente rentabilidade para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/14595-MAIN-9a9f9a41.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/14595-MAIN-9a9f9a41.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7908240522968",
+          "sourceUrl": "https://www.makimakesoficial.com.br/serum-glow-love-mamao-36un-maxlove/p",
+          "basePrice": "126,00",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "MAX LOVE",
+          "cat": "SÉRUM",
+          "line": "rosto"
+        },
+        {
+          "nome": "Lápis Contorno para Lábios 48un Pink 21 CS5128 | Atacado",
+          "volume": "48UN",
+          "varejo": null,
+          "atacado": "526,80",
+          "disponivel": "Sim",
+          "notas": "Display com 48 unidades do Lápis Contorno para Lábios Pink 21 ref. CS5128. Alta fixação, traço preciso, alta rentabilidade e vendas por impulso no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/8595-MAIN-a687f82d.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/8595-MAIN-a687f82d.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "",
+          "sourceUrl": "https://www.makimakesoficial.com.br/lapis-contorno-para-labios-48un-pink21-cs5128/p",
+          "basePrice": "210,72",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "RUBY ROSE",
+          "cat": "LAPIS",
+          "line": "rosto"
+        },
+        {
+          "nome": "Lenço Demaquilante Babasuper Hortelã Superpoderes SP951 01 | Atacado",
+          "volume": "",
+          "varejo": "15,96",
+          "atacado": "14,25",
+          "disponivel": "Sim",
+          "notas": "Pacote de Lenço Demaquilante Babasuper Hortelã ref. SP951 01 da Superpoderes. Limpeza refrescante, remoção eficaz e excelente rentabilidade para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/17521-MAIN-fc730ed0.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/17521-MAIN-fc730ed0.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7898416447471",
+          "sourceUrl": "https://www.makimakesoficial.com.br/lencos-demaquilantes-babasuper-hortela-superpoderes-sp951-01/p",
+          "basePrice": "5,70",
+          "somenteAtacado": false,
+          "destaque": "lojas10",
+          "brand": "SUPER PODERES",
+          "cat": "LENÇOS",
+          "line": "rosto"
+        },
+        {
+          "nome": "Pó Solto Banana 12un Yvisiy VS2501 | Atacado",
+          "volume": "12UN",
+          "varejo": null,
+          "atacado": "110,55",
+          "disponivel": "Sim",
+          "notas": "Display com 12 unidades do Pó Solto Banana Yvisiy ref. VS2501. Textura ultrafina, selagem impecável e excelente rentabilidade no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/24790-MAIN-7e5d9d89.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/24790-MAIN-7e5d9d89.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7908353617254",
+          "sourceUrl": "https://www.makimakesoficial.com.br/po-solto-banana-12un-yvisiy-vs2501/p",
+          "basePrice": "44,22",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "YVISIY",
+          "cat": "PÓ",
+          "line": "rosto"
+        },
+        {
+          "nome": "Pó Facial Banana 21un Zouh | Atacado",
+          "volume": "21UN",
+          "varejo": null,
+          "atacado": "204,23",
+          "disponivel": "Sim",
+          "notas": "Display com 21 unidades do Pó Facial Banana Zouh. Textura ultrafina, efeito matificante, selagem de maquiagem, alta rentabilidade e vendas por impulso no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/21461-MAIN-c72dee2f.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/21461-MAIN-c72dee2f.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7898721161864",
+          "sourceUrl": "https://www.makimakesoficial.com.br/po-facial-banana-21un-zouh/p",
+          "basePrice": "81,69",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "ZOUH",
+          "cat": "PÓ",
+          "line": "rosto"
+        },
+        {
+          "nome": "Máscara Facial Peel Off Pérola Rosa 60un Bobbi Rara BRM-0264 | Atacado",
+          "volume": "60UN",
+          "varejo": null,
+          "atacado": "149,57",
+          "disponivel": "Sim",
+          "notas": "Display com 60 unidades da Máscara Facial Peel Off Pérola Rosa Bobbi Rara ref. BRM-0264. Limpeza profunda, efeito iluminador e alta rentabilidade no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/6420-MAIN-a2d9ed3f.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/6420-MAIN-a2d9ed3f.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "",
+          "sourceUrl": "https://www.makimakesoficial.com.br/mascara-facial-peel-off-perola-rosa-60un-bobbirara-brm-0264/p",
+          "basePrice": "59,83",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "BOBBI RARA",
+          "cat": "HIDRATANTE",
+          "line": "corpo"
+        },
+        {
+          "nome": "Kit 10un Máscara Facial Stitch Surf | Ref M24-222 Atacado",
+          "volume": "10UN",
+          "varejo": null,
+          "atacado": "59,75",
+          "disponivel": "Sim",
+          "notas": "Kit com 10 unidades de Máscara Facial Stitch Surf (Ref. M24-222). Hidratação, cuidado facial e design divertido. Perfeito para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/15496-MAIN-3fcd579f.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/15496-MAIN-3fcd579f.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "6972038415665",
+          "sourceUrl": "https://www.makimakesoficial.com.br/mascara-facial-stitch-surf-10un-china-m24-222/p",
+          "basePrice": "23,90",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "IMPORTADOS",
+          "cat": "HIDRATANTE",
+          "line": "corpo"
+        },
+        {
+          "nome": "Lenço Umedecido Pride Fenzza FZ50022 | Atacado",
+          "volume": "",
+          "varejo": "16,52",
+          "atacado": "14,75",
+          "disponivel": "Sim",
+          "notas": "Lenço Umedecido Pride FZ50022 da Fenzza. Higiene prática, edição especial com design exclusivo e excelente rentabilidade para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/3039-MAIN-52d56ee2.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/3039-MAIN-52d56ee2.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7899360246561",
+          "sourceUrl": "https://www.makimakesoficial.com.br/lenco-umedecido-pride-fenzza-fz50022/p",
+          "basePrice": "5,90",
+          "somenteAtacado": false,
+          "destaque": "lojas10",
+          "brand": "FENZZA",
+          "cat": "LENÇOS",
+          "line": "outros"
+        },
+        {
+          "nome": "Lenço Demaquilante Rosa Mosqueta LD20 Griffty | Atacado",
+          "volume": "",
+          "varejo": "15,29",
+          "atacado": "13,65",
+          "disponivel": "Sim",
+          "notas": "Pacote de Lenço Demaquilante Rosa Mosqueta ref. LD20 da Griffty. Limpeza profunda, ação regeneradora e excelente rentabilidade para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/21363-MAIN-02b37833.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/21363-MAIN-02b37833.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7898567396796",
+          "sourceUrl": "https://www.makimakesoficial.com.br/lenco-umedecido-demaquilante-rosa-mosquetqueta-griffty-ld20/p",
+          "basePrice": "5,46",
+          "somenteAtacado": false,
+          "destaque": "lojas10",
+          "brand": "GRIFFTY",
+          "cat": "LENÇOS",
+          "line": "outros"
+        },
+        {
+          "nome": "DEMAQUILANTE REMOVEDOR 500ML ISISMAKEUP IS037",
+          "volume": "500ML",
+          "varejo": "19,66",
+          "atacado": "17,55",
+          "disponivel": "Sim",
+          "notas": "",
+          "foto": "https://makimakes.jetassets.com.br/produto/24028-MAIN-be853f9f.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/24028-MAIN-be853f9f.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7898996078812",
+          "sourceUrl": "https://www.makimakesoficial.com.br/agua-micelar-demaquilante-500ml-isismakeup-is037/p",
+          "basePrice": "7,02",
+          "somenteAtacado": false,
+          "destaque": "lojas10",
+          "brand": "ISISMAKEUP",
+          "cat": "ÁGUA MICELAR",
+          "line": "outros"
+        },
+        {
+          "nome": "Necessaire Quadrada Fosca Pink 10un Aliah AL08 | Atacado",
+          "volume": "10UN",
+          "varejo": null,
+          "atacado": "131,32",
+          "disponivel": "Sim",
+          "notas": "Kit com 10 necessaires quadradas foscas pink ref. AL08 da Aliah. Praticidade, design moderno e excelente rentabilidade para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/24685-MAIN-13f32793.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/24685-MAIN-13f32793.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7890114389985",
+          "sourceUrl": "https://www.makimakesoficial.com.br/necessaire-quadrada-fosca-pink-10un-aliah-al08/p",
+          "basePrice": "52,53",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "IMPORTADOS",
+          "cat": "NECESSAIRE",
+          "line": "acessorios"
+        },
+        {
+          "nome": "ÁGUA MICELAR COLÁGENO 300ML ISISMAKEUP IS056",
+          "volume": "300ML",
+          "varejo": "13,97",
+          "atacado": "12,48",
+          "disponivel": "Sim",
+          "notas": "",
+          "foto": "https://makimakes.jetassets.com.br/produto/24023-MAIN-b25ed73b.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/24023-MAIN-b25ed73b.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7898721160782",
+          "sourceUrl": "https://www.makimakesoficial.com.br/agua-micelar-colageno-300ml-isismakeup-is056/p",
+          "basePrice": "4,99",
+          "somenteAtacado": false,
+          "destaque": "lojas10",
+          "brand": "ISISMAKEUP",
+          "cat": "ÁGUA MICELAR",
+          "line": "acessorios"
+        },
+        {
+          "nome": "Lip Gloss Choco Glow 36un Isis Makeup IS1151 | Atacado",
+          "volume": "36UN",
+          "varejo": null,
+          "atacado": "473,40",
+          "disponivel": "Sim",
+          "notas": "Display com 36 unidades do Lip Gloss Choco Glow Isis Makeup ref. IS1151. Brilho espelhado, aroma de chocolate, hidratação e alta rentabilidade no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/24048-MAIN-7580f134.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/24048-MAIN-7580f134.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7898721164834",
+          "sourceUrl": "https://www.makimakesoficial.com.br/lip-gloss-choco-glow-36un-isismakeup-is1151/p",
+          "basePrice": "189,36",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "ISISMAKEUP",
+          "cat": "LIP GLOSS",
+          "line": "labios"
+        },
+        {
+          "nome": "BATOM /LIPSTICK CHARMLIPS 72UN RUBYROSE HB-L6001 G1",
+          "volume": "72UN",
+          "varejo": null,
+          "atacado": "1111,50",
+          "disponivel": "Sim",
+          "notas": "",
+          "foto": "https://makimakes.jetassets.com.br/produto/24915-MAIN-77f1eee5.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/24915-MAIN-77f1eee5.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "7900083021370",
+          "sourceUrl": "https://www.makimakesoficial.com.br/batom-lipstick-charmlips-72un-rubyrose-hb-l6001-g1-2/p",
+          "basePrice": "444,60",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "RUBY ROSE",
+          "cat": "BATOM",
+          "line": "labios"
+        },
+        {
+          "nome": "Lip Oil Fruits 36un Vivai 3432.1.1 | Atacado",
+          "volume": "36UN",
+          "varejo": null,
+          "atacado": "385,20",
+          "disponivel": "Sim",
+          "notas": "Display com 36 unidades do Lip Oil Fruits Vivai ref. 3432.1.1. Hidratação profunda, aromas de frutas, efeito glossy, alta rentabilidade e vendas por impulso no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/24797-MAIN-dab50752.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/24797-MAIN-dab50752.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "",
+          "sourceUrl": "https://www.makimakesoficial.com.br/lip-oil-fruits-36un-vivai-343211/p",
+          "basePrice": "154,08",
+          "somenteAtacado": true,
+          "destaque": "lojas10",
+          "brand": "VIVAI",
+          "cat": "LIP GLOSS",
+          "line": "labios"
+        },
+        {
+          "nome": "Lápis de Boca Bobbi Rara | Atacado e Revenda",
+          "volume": "",
+          "varejo": "321,22",
+          "atacado": "286,80",
+          "disponivel": "Sim",
+          "notas": "Lápis delineador para lábios Bobbi Rara. Alta pigmentação, traço macio, excelente fixação e alta rentabilidade para revenda no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/18024-MAIN-443482ba.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/18024-MAIN-443482ba.png"
+          ],
+          "badge": "LOJAS R$10",
+          "gtin": "0070341756829",
+          "sourceUrl": "https://www.makimakesoficial.com.br/lapis-labial-boca-48un-bobbirara-br-863/p",
+          "basePrice": "114,72",
+          "somenteAtacado": false,
+          "destaque": "lojas10",
+          "brand": "BOBBI RARA",
+          "cat": "LAPIS",
+          "line": "olhos"
+        }
+      ]
+    },
+    "ofertasLimitadas": {
+      "title": "Ofertas por tempo limitado",
+      "items": [
+        {
+          "nome": "BODY SPLASH GLOW PESSEGUISSIMO 120ML DAPOP DP2352",
+          "volume": "120ML",
+          "varejo": "28,34",
+          "atacado": "25,30",
+          "disponivel": "Sim",
+          "notas": "",
+          "foto": "https://makimakes.jetassets.com.br/produto/13868-MAIN-59b0cdf6.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/13868-MAIN-59b0cdf6.png"
+          ],
+          "badge": "OFERTA",
+          "gtin": "7899575903990",
+          "sourceUrl": "https://www.makimakesoficial.com.br/body-splash-glow-pesseguissimo-120ml-dapop-dp2352/p",
+          "basePrice": "10,12",
+          "somenteAtacado": false,
+          "destaque": "ofertasLimitadas",
+          "brand": "DAPOP",
+          "cat": "BODY SPLASH",
+          "line": "rosto"
+        },
+        {
+          "nome": "CREME CORPORAL JUICE MELANCIA 100ML DERMACHEM 09230",
+          "volume": "100ML",
+          "varejo": "24,30",
+          "atacado": "21,70",
+          "disponivel": "Sim",
+          "notas": "",
+          "foto": "https://makimakes.jetassets.com.br/produto/109230-MAIN-5bebd8be.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/109230-MAIN-5bebd8be.png"
+          ],
+          "badge": "OFERTA",
+          "gtin": "7908346903906",
+          "sourceUrl": "https://www.makimakesoficial.com.br/creme-corporal-juice-melancia-100ml-dermachem-09230/p",
+          "basePrice": "8,68",
+          "somenteAtacado": false,
+          "destaque": "ofertasLimitadas",
+          "brand": "DERMACHEM",
+          "cat": "HIDRATANTE",
+          "line": "rosto"
+        },
+        {
+          "nome": "Paleta de Sombras Eye Shadow 24un Super Poderes RD-1805 | Atacado",
+          "volume": "24UN",
+          "varejo": null,
+          "atacado": "510,00",
+          "disponivel": "Sim",
+          "notas": "Display com 24 unidades da Paleta de Sombras Eye Shadow Super Poderes RD-1805. Alta pigmentação, textura aveludada, formato compacto e excelente rentabilidade no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/1805-MAIN-81c4c10c.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/1805-MAIN-81c4c10c.png"
+          ],
+          "badge": "OFERTA",
+          "gtin": "6972071001870",
+          "sourceUrl": "https://www.makimakesoficial.com.br/paleta-de-sombras-eye-shadow-24un-super-poderes-rd-1805/p",
+          "basePrice": "204,00",
+          "somenteAtacado": true,
+          "destaque": "ofertasLimitadas",
+          "brand": "SUPER PODERES",
+          "cat": "SOMBRAS",
+          "line": "rosto"
+        },
+        {
+          "nome": "ATIVADOR FACIAL DE LIMPEZA 120ML DERMACHEM",
+          "volume": "120ML",
+          "varejo": "14,98",
+          "atacado": "13,38",
+          "disponivel": "Sim",
+          "notas": "",
+          "foto": "https://makimakes.jetassets.com.br/produto/73201-MAIN-9630faaf.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/73201-MAIN-9630faaf.png"
+          ],
+          "badge": "OFERTA",
+          "gtin": "7908346902039",
+          "sourceUrl": "https://www.makimakesoficial.com.br/ativador-facial-de-limpeza-120ml-dermachem/p",
+          "basePrice": "5,35",
+          "somenteAtacado": false,
+          "destaque": "ofertasLimitadas",
+          "brand": "DERMACHEM",
+          "cat": "HIDRATANTE",
+          "line": "corpo"
+        },
+        {
+          "nome": "SABONETE DE BANHO JUICE MELANCIA 100ML DERMACHEM 09220",
+          "volume": "100ML",
+          "varejo": "18,96",
+          "atacado": "16,92",
+          "disponivel": "Sim",
+          "notas": "",
+          "foto": "https://makimakes.jetassets.com.br/produto/92201-MAIN-08a9deb5.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/92201-MAIN-08a9deb5.png"
+          ],
+          "badge": "OFERTA",
+          "gtin": "7908346903982",
+          "sourceUrl": "https://www.makimakesoficial.com.br/sabonete-de-banho-juice-melancia-100ml-dermachem-09220/p",
+          "basePrice": "6,77",
+          "somenteAtacado": false,
+          "destaque": "ofertasLimitadas",
+          "brand": "DERMACHEM",
+          "cat": "SABONETE",
+          "line": "corpo"
+        },
+        {
+          "nome": "Paleta de Sombras Rose Shine 12un Febella PS030315 | Atacado",
+          "volume": "12UN",
+          "varejo": null,
+          "atacado": "521,70",
+          "disponivel": "Sim",
+          "notas": "Display com 12 unidades da Paleta de Sombras Rose Shine Febella PS030315. Tons rosados elegantes, acabamentos mate e cintilante e excelente rentabilidade no atacado.",
+          "foto": "https://makimakes.jetassets.com.br/produto/30315-MAIN-55886678.png",
+          "fotos": [
+            "https://makimakes.jetassets.com.br/produto/30315-MAIN-55886678.png"
+          ],
+          "badge": "OFERTA",
+          "gtin": "7898765081456",
+          "sourceUrl": "https://www.makimakesoficial.com.br/paleta-de-sombras-rose-shine-12un-febella-ps030315/p",
+          "basePrice": "208,68",
+          "somenteAtacado": true,
+          "destaque": "ofertasLimitadas",
+          "brand": "FEBELLA",
+          "cat": "SOMBRAS",
+          "line": "olhos"
+        }
+      ]
+    }
+  },
+  "BRANDS": [
+    "4ANGELS",
+    "ALLEVA",
+    "APINIL",
+    "BEIJO DE NEVE",
+    "BELKIT",
+    "BELL CORPUS",
+    "BELLA FEMME",
+    "BELLE ANGEL",
+    "BIOSAVE",
+    "BOBBI RARA",
+    "BRIÁ",
+    "CAPLIFE",
+    "CARMED",
+    "CHARMELLE",
+    "CITY GIRLS",
+    "DAPOP",
+    "DERMACHEM",
+    "ESSENCIA DA MULHER",
+    "FACE BEAUTIFUL",
+    "FEBELLA",
+    "FEMME PARIS",
+    "FENZZA",
+    "FLASH FLORA",
+    "FOREVERYOU",
+    "GRIFFTY",
+    "HELLO MINI",
+    "IAMO",
+    "IMPORTADOS",
+    "ISISMAKEUP",
+    "JUMMYJU",
+    "LABRANCHE",
+    "LADY BEAUTY",
+    "LADY CARE",
+    "LOVE RAIN",
+    "LUA&NEVE",
+    "LUISANCE",
+    "LUK",
+    "LYRICS",
+    "MACRILAN",
+    "MAX LOVE",
+    "MELU",
+    "MIAMAKE",
+    "MISS LARY",
+    "NELO",
+    "ODALIA",
+    "PINK21",
+    "PORAN",
+    "RAINHA DO ORIENTE",
+    "RHENUKS",
+    "RUBY ANJO",
+    "RUBY ROSE",
+    "SABRINA SATO",
+    "SARAH´S BEAUTY",
+    "SPCOLORS",
+    "SUPER PODERES",
+    "SWISS BEAUTY",
+    "TA LINDA",
+    "TANGO",
+    "TOQUE SPECIAL",
+    "VIVAI",
+    "YOYO",
+    "YVISIY",
+    "ZOUH"
+  ]
 }

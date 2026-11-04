@@ -538,6 +538,84 @@
       overflow: hidden !important;
     }
 
+  
+    .btn-brands {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+    .brand-panel {
+      display: none;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 0.5rem 1rem 0.75rem;
+    }
+    .brand-panel.open { display: block; }
+    .brand-panel-head {
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 0.45rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .brand-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .brand-chip {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 999px;
+      padding: 0.35rem 0.75rem;
+      font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .brand-chip.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+    .vitrine-section { max-width: 1180px; margin: 0.5rem auto 1rem; padding: 0 0 0.5rem; }
+    .vitrine-head { padding: 0 1rem 0.5rem; }
+    .vitrine-head h2 { font-size: 1rem; }
+    .vitrine-track {
+      display: flex;
+      gap: 0.75rem;
+      overflow-x: auto;
+      padding: 0.25rem 1rem 0.75rem;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .vitrine-card { flex: 0 0 min(280px, 82vw); scroll-snap-align: start; }
+    .vitrine-card .card { height: 100%; }
+    .section-block { max-width: 1180px; margin: 0 auto 1rem; padding: 0 1rem; }
+    .section-title { font-size: 1.05rem; margin: 0.5rem 0 0.75rem; }
+    .section-grid { display: grid; gap: 0.75rem; grid-template-columns: 1fr; }
+    @media (min-width: 640px) {
+      .section-grid { grid-template-columns: 1fr 1fr; }
+    }
+    .details-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.6rem;
+    }
+    .nav-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1px solid var(--border); background: #fff;
+      font-size: 1.2rem; cursor: pointer;
+    }
+    .nav-btn:disabled { opacity: 0.35; }
+    .nav-pos { font-size: 0.8rem; color: var(--muted); }
+    .photo, .name { cursor: pointer; }
+
   </style>
 
   <script type="application/ld+json">
@@ -597,7 +675,10 @@
       <option value="name">Nome A–Z</option>
     </select>
   </div>
-  <div class="toolbar-stats"><span id="resultStats"></span></div>
+  <div class="toolbar-stats">
+      <button type="button" id="btnToggleBrands" class="btn-brands">Compre por marcas</button>
+      <span id="resultStats"></span>
+    </div>
 
   <main>
     <div id="bootStatus">Carregando catálogo…</div>
