@@ -1,18 +1,17 @@
 /**
- * sync-catalog.mjs — MakiMakes → catalogo.json
+ * sync-catalog.mjs — MakiMakes → catalogo.public.json
  *
  * Coleta produtos de https://www.makimakesoficial.com.br
  * Categorias: Maquiagem + Cosméticos + Acessórios (exclui Perfumaria)
  *
- * Estratégia:
- *  1. Baixa o sitemap.xml
- *  2. Filtra URLs de produto (/p)
- *  3. Para cada produto: fetch da página e extrai JSON-LD (schema.org/Product)
- *  4. Aplica regras de preço e monta o DATA no formato do Gist
+ * Saídas:
+ *   catalogo.generated.json  (completo, NÃO publicar — data/)
+ *   catalogo.public.json     (publicar no Gist + /catalogo.json — sem custo/regra)
+ *   data/linhas/<linha>.json (split por linha para lazy-load)
  *
  * Uso:
  *   node scripts/sync-catalog.mjs
- *   MAX_PRODUCTS=30   (para testes rápidos)
+ *   MAX_PRODUCTS=30   (teste rápido)
  *   CONCURRENCY=5
  *   DELAY_MS=200
  *
@@ -74,27 +73,31 @@ const LINE_MAP = {
   'lenço': 'acessorios',
 };
 
-// Regras de preço — AJUSTE CONFORME SUA MARGEM
-// Preço do site = base (geralmente pack de 12/24 un)
+// ===== FONTE ÚNICA DA VERDADE — NÃO DUPLICAR EM README/JSON =====
+// Padrão: varejo 2.5x, atacado 2.0x sobre preço do fornecedor
+// Lojas R$10 e Ofertas Limitadas: varejo 1.8x, atacado 1.5x
 const PRICE_RULES = {
   varejoMarkup: 2.50,
   atacadoMarkup: 2.00,
 };
 
-// Destaques do site raiz (markup diferenciado)
+const SPECIAL_PRICE_RULES = {
+  lojas10:          { varejoMarkup: 1.80, atacadoMarkup: 1.50 },
+  ofertasLimitadas: { varejoMarkup: 1.80, atacadoMarkup: 1.50 },
+};
+
+// Destaques do site raiz
 const SPECIAL_GROUPS = {
   lojas10: {
     url: 'https://www.makimakesoficial.com.br/lojas-de-10/g',
     title: 'Lojas de R$10,00',
-    varejoMarkup: 2.80,  // 180%
-    atacadoMarkup: 2.50  // 150%
+    ...SPECIAL_PRICE_RULES.lojas10,
   },
   ofertasLimitadas: {
     url: 'https://www.makimakesoficial.com.br/ofertas-por-tempo-limitado/g',
     title: 'Ofertas por tempo limitado',
-    varejoMarkup: 2.80,
-    atacadoMarkup: 2.50
-  }
+    ...SPECIAL_PRICE_RULES.ofertasLimitadas,
+  },
 };
 
 // ========== HELPERS ==========
@@ -127,16 +130,16 @@ function formatPrice(n) {
 function calcPrices(base) {
   return {
     varejo: formatPrice(base * PRICE_RULES.varejoMarkup),
-    atacado: formatPrice(base * PRICE_RULES.atacadoMarkup)
+    atacado: formatPrice(base * PRICE_RULES.atacadoMarkup),
   };
 }
 
 function calcSpecialPrices(base, groupKey) {
-  const g = SPECIAL_GROUPS[groupKey];
+  const g = SPECIAL_PRICE_RULES[groupKey];
   if (!g) return calcPrices(base);
   return {
     varejo: formatPrice(base * g.varejoMarkup),
-    atacado: formatPrice(base * g.atacadoMarkup)
+    atacado: formatPrice(base * g.atacadoMarkup),
   };
 }
 
@@ -144,7 +147,7 @@ function calcSpecialPrices(base, groupKey) {
 async function fetchGroupSlugs(groupUrl) {
   try {
     const res = await fetch(groupUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EmpórioARBeauty/1.0)', 'Accept': 'text/html' }
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EmpórioARBeauty/1.0)', 'Accept': 'text/html' },
     });
     if (!res.ok) return new Set();
     const html = await res.text();
@@ -192,8 +195,8 @@ async function fetchText(url) {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; CatalogSync/1.0)',
       'Accept': 'text/html',
-      'Accept-Language': 'pt-BR,pt;q=0.9'
-    }
+      'Accept-Language': 'pt-BR,pt;q=0.9',
+    },
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.text();
@@ -249,7 +252,6 @@ async function processProduct(url, specialMaps = {}) {
 
     if (basePrice <= 0) return null;
 
-    // slug relativo para bater com grupos
     const slug = url.replace(/^https?:\/\/www\.makimakesoficial\.com\.br\//, '').replace(/^\//, '');
     let specialKey = null;
     for (const [key, set] of Object.entries(specialMaps)) {
@@ -270,7 +272,8 @@ async function processProduct(url, specialMaps = {}) {
       cat: category || line,
       brand,
       specialKey,
-      item: {
+      // item interno (completo, para catalogo.generated.json)
+      internalItem: {
         nome: name,
         volume: volume,
         varejo: isBox ? null : prices.varejo,
@@ -284,8 +287,23 @@ async function processProduct(url, specialMaps = {}) {
         sourceUrl: url,
         basePrice: formatPrice(basePrice),
         somenteAtacado: isBox,
-        destaque: specialKey || null
-      }
+        destaque: specialKey || null,
+      },
+      // item público (sem custo/regra/source) — para catalogo.public.json
+      publicItem: {
+        nome: name,
+        volume: volume,
+        varejo: isBox ? null : prices.varejo,
+        atacado: prices.atacado,
+        disponivel: availability,
+        notas: (p.description && p.description !== name) ? unescapeHtml(p.description).slice(0, 400) : '',
+        foto: image,
+        fotos: image ? [image] : [],
+        badge,
+        gtin,
+        somenteAtacado: isBox,
+        destaque: specialKey || null,
+      },
     };
   } catch (e) {
     console.warn(`  falha ${url.slice(-40)}: ${e.message}`);
@@ -309,10 +327,91 @@ async function runPool(urls, concurrency, fn) {
   return results;
 }
 
+function buildOutputs(raw, specialGroups) {
+  const groupsByLine = {};
+  const brandsSet = new Set();
+  const destaquesInternal = { lojas10: [], ofertasLimitadas: [] };
+  const destaquesPublic   = { lojas10: [], ofertasLimitadas: [] };
+
+  for (const r of raw) {
+    brandsSet.add(r.brand);
+    if (!groupsByLine[r.line]) groupsByLine[r.line] = {};
+    const key = `${r.brand}||${r.cat}`;
+    if (!groupsByLine[r.line][key]) {
+      groupsByLine[r.line][key] = { cat: r.cat, brand: r.brand, items: [], publicItems: [] };
+    }
+    groupsByLine[r.line][key].items.push(r.internalItem);
+    groupsByLine[r.line][key].publicItems.push(r.publicItem);
+    if (r.specialKey) {
+      destaquesInternal[r.specialKey]?.push({ ...r.internalItem, brand: r.brand, cat: r.cat, line: r.line });
+      destaquesPublic[r.specialKey]?.push({ ...r.publicItem, brand: r.brand, cat: r.cat, line: r.line });
+    }
+  }
+
+  const DATA_INTERNAL = {};
+  const DATA_PUBLIC = {};
+  for (const [line, groups] of Object.entries(groupsByLine)) {
+    DATA_INTERNAL[line] = Object.values(groups)
+      .map(g => ({ cat: g.cat, brand: g.brand, items: g.items }))
+      .sort((a, b) => a.brand.localeCompare(b.brand));
+    DATA_PUBLIC[line] = Object.values(groups)
+      .map(g => ({ cat: g.cat, brand: g.brand, items: g.publicItems }))
+      .sort((a, b) => a.brand.localeCompare(b.brand));
+  }
+
+  const DESTAQUES_INTERNAL = {};
+  const DESTAQUES_PUBLIC = {};
+  for (const [k, cfg] of Object.entries(specialGroups)) {
+    DESTAQUES_INTERNAL[k] = { title: cfg.title, items: destaquesInternal[k] };
+    DESTAQUES_PUBLIC[k]   = { title: cfg.title, items: destaquesPublic[k] };
+  }
+
+  const BRANDS = [...brandsSet].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+  const metaCommon = {
+    updated_at: new Date().toISOString(),
+    source: 'makimakesoficial.com.br',
+    total_products: raw.length,
+    version: 2,
+    box_detection: 'nome contém N UN ou Box',
+    somenteAtacado_count: raw.filter(r => r.internalItem.somenteAtacado).length,
+    com_varejo_count: raw.filter(r => !r.internalItem.somenteAtacado).length,
+  };
+
+  const internal = {
+    DATA: DATA_INTERNAL,
+    DESTAQUES: DESTAQUES_INTERNAL,
+    BRANDS,
+    WHATSAPP: process.env.WHATSAPP || '5562991134488',
+    BRAND: {
+      name: process.env.BRAND_NAME || 'Empório A.R. Beauty',
+      phone: process.env.BRAND_PHONE || '(62) 99113-4488',
+      tagline: 'Maquiagem e Cosméticos — Varejo e Atacado',
+    },
+    META: {
+      ...metaCommon,
+      price_rules: {
+        ...PRICE_RULES,
+        especiais: SPECIAL_PRICE_RULES,
+      },
+    },
+  };
+
+  const publicOutput = {
+    DATA: DATA_PUBLIC,
+    DESTAQUES: DESTAQUES_PUBLIC,
+    BRANDS,
+    WHATSAPP: internal.WHATSAPP,
+    BRAND: internal.BRAND,
+    META: metaCommon,
+  };
+
+  return { internal, public: publicOutput, DATA_PUBLIC };
+}
+
 async function main() {
   console.log('=== Sync Catálogo Maquiagem (MakiMakes) ===\n');
 
-  // Destaques do site raiz (atualiza a cada sync)
   const specialMaps = {};
   for (const [key, cfg] of Object.entries(SPECIAL_GROUPS)) {
     console.log('Grupo:', cfg.title);
@@ -322,7 +421,6 @@ async function main() {
   }
 
   let urls = await getProductUrlsFromSitemap();
-  // garante URLs dos destaques mesmo se sumirem do sitemap
   for (const set of Object.values(specialMaps)) {
     for (const slug of set) {
       const full = 'https://www.makimakesoficial.com.br/' + slug;
@@ -338,75 +436,42 @@ async function main() {
   const raw = await runPool(urls, CONCURRENCY, (url) => processProduct(url, specialMaps));
   console.log(`\nExtraídos com sucesso: ${raw.length}`);
 
-  const groupsByLine = {};
-  const brandsSet = new Set();
-  const destaquesItems = { lojas10: [], ofertasLimitadas: [] };
+  const { internal, public: publicOutput, DATA_PUBLIC } = buildOutputs(raw, SPECIAL_GROUPS);
 
-  for (const r of raw) {
-    brandsSet.add(r.brand);
-    if (!groupsByLine[r.line]) groupsByLine[r.line] = {};
-    const key = `${r.brand}||${r.cat}`;
-    if (!groupsByLine[r.line][key]) {
-      groupsByLine[r.line][key] = { cat: r.cat, brand: r.brand, items: [] };
-    }
-    groupsByLine[r.line][key].items.push(r.item);
-    if (r.specialKey && destaquesItems[r.specialKey]) {
-      destaquesItems[r.specialKey].push({ ...r.item, brand: r.brand, cat: r.cat, line: r.line });
-    }
+  // ---- catálogo interno (NÃO publicar) ----
+  const dataDir = path.join(__dirname, '..', 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
+  const outInternal = path.join(dataDir, 'catalogo.generated.json');
+  fs.writeFileSync(outInternal, JSON.stringify(internal, null, 2), 'utf8');
+  console.log('\nGerado (interno, gitignored):', outInternal);
+
+  // ---- catálogo público (Gist + /catalogo.json) ----
+  const outPublic = path.join(dataDir, 'catalogo.public.json');
+  fs.writeFileSync(outPublic, JSON.stringify(publicOutput, null, 2), 'utf8');
+  console.log('Gerado (público, para Gist):', outPublic);
+
+  // ---- split por linha (lazy-load) ----
+  const linhasDir = path.join(dataDir, 'linhas');
+  fs.mkdirSync(linhasDir, { recursive: true });
+  for (const [line, groups] of Object.entries(DATA_PUBLIC)) {
+    const body = {
+      [line]: groups,
+      WHATSAPP: publicOutput.WHATSAPP,
+      BRAND: publicOutput.BRAND,
+      DESTAQUES: publicOutput.DESTAQUES,
+      BRANDS: publicOutput.BRANDS,
+      META: publicOutput.META,
+    };
+    fs.writeFileSync(path.join(linhasDir, `${line}.json`), JSON.stringify(body, null, 2), 'utf8');
   }
+  console.log('Gerado (split):', linhasDir);
 
-  const DATA = {};
-  for (const [line, groups] of Object.entries(groupsByLine)) {
-    DATA[line] = Object.values(groups).sort((a, b) => a.brand.localeCompare(b.brand));
-  }
-
-  const DESTAQUES = {
-    lojas10: {
-      title: SPECIAL_GROUPS.lojas10.title,
-      items: destaquesItems.lojas10
-    },
-    ofertasLimitadas: {
-      title: SPECIAL_GROUPS.ofertasLimitadas.title,
-      items: destaquesItems.ofertasLimitadas
-    }
-  };
-
-  const BRANDS = [...brandsSet].filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
-
-  const output = {
-    DATA,
-    DESTAQUES,
-    BRANDS,
-    WHATSAPP: process.env.WHATSAPP || '5562991134488',
-    BRAND: {
-      name: process.env.BRAND_NAME || 'Empório A.R. Beauty',
-      phone: process.env.BRAND_PHONE || '(62) 99113-4488',
-      tagline: 'Maquiagem e Cosméticos — Varejo e Atacado'
-    },
-    META: {
-      updated_at: new Date().toISOString(),
-      source: 'makimakesoficial.com.br',
-      total_products: raw.length,
-      version: 2,
-      price_rules: {
-        ...PRICE_RULES,
-        especiais: {
-          lojas10: { varejoMarkup: 2.8, atacadoMarkup: 2.5 },
-          ofertasLimitadas: { varejoMarkup: 2.8, atacadoMarkup: 2.5 }
-        }
-      }
-    }
-  };
-
-  const outPath = path.join(__dirname, '..', 'catalogo.generated.json');
-  fs.writeFileSync(outPath, JSON.stringify(output, null, 2), 'utf8');
-  console.log('\nGerado:', outPath);
-  console.log('Linhas:', Object.keys(DATA).map(k => {
-    const count = DATA[k].reduce((s, g) => s + g.items.length, 0);
+  console.log('\nLinhas:', Object.keys(DATA_PUBLIC).map(k => {
+    const count = DATA_PUBLIC[k].reduce((s, g) => s + g.items.length, 0);
     return `${k}(${count})`;
   }).join(', '));
-  console.log('Destaques: lojas10=', DESTAQUES.lojas10.items.length, 'ofertas=', DESTAQUES.ofertasLimitadas.items.length);
-  console.log('Marcas:', BRANDS.length);
+  console.log('Destaques: lojas10=', publicOutput.DESTAQUES.lojas10.items.length, 'ofertas=', publicOutput.DESTAQUES.ofertasLimitadas.items.length);
+  console.log('Marcas:', publicOutput.BRANDS.length);
 }
 
 main().catch(err => {
