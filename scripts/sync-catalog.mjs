@@ -15,8 +15,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SITEMAP_URL = 'https://www.makimakesoficial.com.br/sitemap.xml';
 const MAX_PRODUCTS = parseInt(process.env.MAX_PRODUCTS || '0', 10) || Infinity;
-const CONCURRENCY = parseInt(process.env.CONCURRENCY || '5', 10);
-const DELAY_MS = parseInt(process.env.DELAY_MS || '80', 10);
+const CONCURRENCY = parseInt(process.env.CONCURRENCY || '3', 10);
+const DELAY_MS = parseInt(process.env.DELAY_MS || '300', 10);
 const MAX_GROUP_PAGES = parseInt(process.env.MAX_GROUP_PAGES || '10', 10);
 
 const LINE_MAP = {
@@ -221,8 +221,16 @@ async function getProductUrlsFromSitemap() {
 
 async function processProduct(url, page, specialMaps = {}) {
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-    await sleep(200);
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
+    await sleep(1000);
+    // Garante bloco de fragrâncias / descrição quando a página é JS-heavy
+    try {
+      await page.waitForSelector(
+        '.grouping-text, .jet-product-description, .jet-product-summarized-description, script[type="application/ld+json"]',
+        { timeout: 8000 }
+      );
+    } catch (_) {}
+    await sleep(500);
 
     const html = await page.content();
     const p = extractJsonLdProduct(html);
@@ -505,15 +513,9 @@ async function main() {
   );
   for (const p of pages) {
     await p.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-    // Produto: bloqueia imagem/fonte/css pesado — JSON-LD e texto ainda vêm no HTML
-    await p.setRequestInterception(true);
-    p.on('request', req => {
-      const t = req.resourceType();
-      if (t === 'image' || t === 'font' || t === 'media' || t === 'stylesheet') req.abort();
-      else req.continue();
-    });
+    // Sem bloqueio de recursos: descrição e .grouping-text (variações) dependem do DOM completo
   }
-  console.log(`Concorrência: ${CONCURRENCY} | delay: ${DELAY_MS}ms`);
+  console.log(`Concorrência: ${CONCURRENCY} | delay: ${DELAY_MS}ms | modo: completo (variações/descrição)`);
 
   const results = [];
   let idx = 0;
