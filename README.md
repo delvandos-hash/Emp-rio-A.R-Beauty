@@ -124,3 +124,16 @@ Executar **após** aplicar os patches e rodar `node scripts/sync-catalog.mjs`.
 | 16 | Feed | `curl -I /feed.xml` | 200 + `<item>` com `g:id`, `g:price`, `g:availability` | print curl |
 | 17 | Sitemap | `curl /sitemap.xml` | Válido, só home (documentado) | print |
 | 18 | `catalogo.json` público | `curl /catalogo.json` | **Sem** `basePrice`, **sem** `price_rules`, **sem** `sourceUrl` | print |
+
+## Google Search Console e Merchant Center
+
+Guia completo: [`docs/GOOGLE_SETUP.md`](docs/GOOGLE_SETUP.md)
+
+| Recurso | URL |
+|---------|-----|
+| Sitemap | https://emporioar-beauty.netlify.app/sitemap.xml |
+| Robots | https://emporioar-beauty.netlify.app/robots.txt |
+| Feed Merchant | https://emporioar-beauty.netlify.app/feed.xml |
+
+Env no Netlify: `GIST_CATALOG_URL` + `SITE_URL`.
+

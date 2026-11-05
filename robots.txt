@@ -1,4 +1,10 @@
 User-agent: *
 Allow: /
 
+# Feed Google Merchant
+Allow: /feed.xml
+
+# Catálogo JSON (ok para bots; não contém custo)
+Allow: /catalogo.json
+
 Sitemap: https://emporioar-beauty.netlify.app/sitemap.xml
