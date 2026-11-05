@@ -74,7 +74,7 @@
     .btn-cart-header { position: relative; background: rgba(255,255,255,.15); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     #cartBadge { position: absolute; top: -4px; right: -4px; background: var(--wa); color: #fff; font-size: .65rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 999px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
     
-    /* VITRINE CARROSSEL (Ofertas) */
+    /* VITRINE CARROSSEL */
     .vitrine-section { margin: 1rem 0 2rem; }
     .vitrine-head { margin-bottom: 0.8rem; display: flex; justify-content: space-between; align-items: center; }
     .vitrine-head h2 { font-size: 1.1rem; color: var(--text); }
@@ -82,32 +82,6 @@
     .vitrine-track::-webkit-scrollbar { display: none; }
     .vitrine-card { flex: 0 0 min(280px, 85vw); scroll-snap-align: start; }
     .vitrine-card .card { height: 100%; margin: 0; }
-
-    /* SEÇÃO EM GRADE (Lojas de R$10) — evita poluição visual do carrossel */
-    .section-grid { margin: 1.25rem 0 2rem; }
-    .section-grid .section-head {
-      margin-bottom: 0.85rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-    }
-    .section-grid .section-head h2 {
-      font-size: 1.15rem;
-      color: var(--text);
-      margin: 0;
-    }
-    .section-grid .section-count {
-      font-size: 0.78rem;
-      color: var(--muted);
-      font-weight: 500;
-    }
-    .section-products {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 0.75rem;
-    }
 
     #cartOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 400; opacity: 0; pointer-events: none; transition: opacity .25s; }
     #cartOverlay.open { opacity: 1; pointer-events: auto; }
