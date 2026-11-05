@@ -284,10 +284,10 @@ function renderDestaques() {
   if (!host) return;
   const lojas = DESTAQUES.lojas10?.items || [];
   const ofertas = DESTAQUES.ofertasLimitadas?.items || [];
-  
+
   let html = '';
-  
-  // Vitrine de Ofertas
+
+  // Ofertas continua em carrossel (poucos itens)
   if (ofertas.length) {
     html += `<section class="vitrine-section">
       <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.ofertasLimitadas.title || 'Ofertas por tempo limitado')}</h2></div>
@@ -296,17 +296,20 @@ function renderDestaques() {
       </div>
     </section>`;
   }
-  
-  // Vitrine Lojas R$10
+
+  // Lojas de R$10 vira SEÇÃO em grade (não carrossel) — evita poluição visual
   if (lojas.length) {
-    html += `<section class="vitrine-section">
-      <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.lojas10.title || 'Lojas de R$10,00')}</h2></div>
-      <div class="vitrine-track" id="vitrineLojas">
-        ${lojas.map(p => `<div class="vitrine-card">${cardHtml(p)}</div>`).join('')}
+    html += `<section class="section-grid" id="secaoLojas10">
+      <div class="section-head">
+        <h2>${escapeHtml(DESTAQUES.lojas10.title || 'Lojas de R$10,00')}</h2>
+        <span class="section-count">${lojas.length} produto${lojas.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="section-products" id="gridLojas10">
+        ${lojas.map(p => cardHtml(p)).join('')}
       </div>
     </section>`;
   }
-  
+
   host.innerHTML = html;
   bindCardEvents(host);
 }
@@ -484,7 +487,9 @@ function injectProductJsonLd(p) {
     el.id = 'product-jsonld';
     document.head.appendChild(el);
   }
-  const price = p.somenteAtacado ? p.atacado : p.varejo;
+  const priceRaw = p.somenteAtacado ? p.atacado : p.varejo;
+  const priceNum = parsePrice(priceRaw);
+  const priceSchema = priceNum > 0 ? priceNum.toFixed(2) : '0.00';
   const payload = {
     '@context':'https://schema.org',
     '@type':'Product',
@@ -495,10 +500,12 @@ function injectProductJsonLd(p) {
     offers: {
       '@type':'Offer',
       priceCurrency:'BRL',
-      price: formatPrice(parsePrice(price)),
-      availability: (p.disponivel||'').toLowerCase()==='sim'?'https://schema.org/InStock':'https://schema.org/OutOfStock'
+      price: priceSchema,
+      availability: (p.disponivel||'').toLowerCase()==='sim'?'https://schema.org/InStock':'https://schema.org/OutOfStock',
+      url: window.location.href
     }
   };
+  if (p.gtin) payload.gtin = String(p.gtin).replace(/\D/g, '');
   el.textContent = JSON.stringify(payload).replace(/</g, '\\u003c');
 }
 
