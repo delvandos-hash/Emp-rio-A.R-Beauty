@@ -141,37 +141,37 @@ function extractJsonLdProduct(html) {
  */
 async function fetchGroupSlugsWithPuppeteer(groupUrl) {
   const set = new Set();
+  // Versão estável (sem otimização agressiva) — a grade da MakiMakes é JS-rendered
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--no-first-run',
-      '--disable-extensions'
-    ]
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
   });
   const page = await browser.newPage();
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-  // Vitrine: bloqueia imagens/fontes (só precisamos dos links)
-  await page.setRequestInterception(true);
-  page.on('request', req => {
-    const t = req.resourceType();
-    if (t === 'image' || t === 'font' || t === 'media') req.abort();
-    else req.continue();
-  });
+  await page.setUserAgent(
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  );
+  // Não interceptar requests: CSS/JS precisam carregar para a lista de produtos aparecer
 
   try {
     console.log(`  Abrindo vitrine: ${groupUrl}`);
 
     for (let pageNum = 1; pageNum <= MAX_GROUP_PAGES; pageNum++) {
-      const url = pageNum === 1 ? groupUrl : `${groupUrl}${groupUrl.includes('?') ? '&' : '?'}pageNumber=${pageNum}`;
+      const url =
+        pageNum === 1
+          ? groupUrl
+          : `${groupUrl}${groupUrl.includes('?') ? '&' : '?'}pageNumber=${pageNum}`;
       console.log(`    Lendo página ${pageNum}: ${url}`);
 
       try {
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
-        await sleep(600);
+        await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+        await sleep(2000);
+        // Aguarda cards (até 20s)
+        try {
+          await page.waitForSelector('a[href$="/p"]', { timeout: 20000 });
+        } catch (_) {
+          console.log(`    Selector a[href$="/p"] não apareceu a tempo na página ${pageNum}.`);
+        }
+        await sleep(1000);
       } catch (e) {
         console.warn(`    Falha ao abrir página ${pageNum}: ${e.message}`);
         break;
@@ -179,11 +179,13 @@ async function fetchGroupSlugsWithPuppeteer(groupUrl) {
 
       const links = await page.evaluate(() => {
         return [...new Set(
-          Array.from(document.querySelectorAll('a[href$="/p"]'))
-            .map(a => a.href)
-            .filter(Boolean)
+          Array.from(document.querySelectorAll('a[href$="/p"], a[href*="/p?"]'))
+            .map(a => (a.href || '').split('?')[0])
+            .filter(h => h.endsWith('/p'))
         )];
       });
+
+      console.log(`    Links /p encontrados: ${links.length}`);
 
       if (!links.length) {
         console.log(`    Nenhum produto na página ${pageNum} — fim da paginação.`);
@@ -200,7 +202,6 @@ async function fetchGroupSlugsWithPuppeteer(groupUrl) {
       }
       console.log(`    -> +${added} novos | Total acumulado: ${set.size}`);
 
-      // Se a página retornou poucos itens e não adicionou nada novo, para
       if (added === 0) break;
     }
   } catch (e) {
@@ -211,6 +212,7 @@ async function fetchGroupSlugsWithPuppeteer(groupUrl) {
 
   return set;
 }
+
 
 async function getProductUrlsFromSitemap() {
   const xml = await fetchText(SITEMAP_URL);
