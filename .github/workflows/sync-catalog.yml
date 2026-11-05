@@ -2,12 +2,13 @@ name: Sync Catálogo
 
 on:
   schedule:
-    - cron: '0 6 * * *' # Roda todos os dias às 06:00 UTC
-  workflow_dispatch:      # Permite rodar manualmente
+    - cron: '0 6 * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
@@ -16,12 +17,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
       - name: Instalar Dependências
         run: npm install
 
-      - name: Rodar o Scraper (com navegador fantasma)
+      - name: Rodar o Scraper (otimizado)
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          CONCURRENCY: '5'
+          DELAY_MS: '80'
         run: node scripts/sync-catalog.mjs
+
+      - name: Commit catálogo atualizado (se houver mudança)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add catalogo.json data/catalogo.public.json data/catalogo.generated.json 2>/dev/null || true
+          git add catalogo.json 2>/dev/null || true
+          if git diff --staged --quiet; then
+            echo "Sem mudanças no catálogo."
+          else
+            git commit -m "chore: sync catálogo $(date -u +%Y-%m-%d)"
+            git push
+          fi
