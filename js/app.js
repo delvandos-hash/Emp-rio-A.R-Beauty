@@ -135,15 +135,35 @@ function findProduct(id) {
 
 function isLojas10(p) {
   const b = (p.badge || '').toUpperCase();
-  return b.includes('LOJAS') || b.includes('R$10') || p.destaque === 'lojas10';
+  const d = (p.destaque || '').toLowerCase();
+  return b.includes('LOJAS') || b.includes('R$10') || d === 'lojas10';
 }
 function isOferta(p) {
   const b = (p.badge || '').toUpperCase();
-  return b.includes('OFERTA') || p.destaque === 'ofertasLimitadas';
+  const d = (p.destaque || '').toLowerCase();
+  return b.includes('OFERTA') || d === 'ofertaslimitadas' || d === 'ofertas';
 }
 // Vitrine (ofertas/lojas) fica fora de "Todos" e das linhas de categoria
 function isVitrineProduct(p) {
   return isLojas10(p) || isOferta(p);
+}
+
+/** Itens de uma vitrine: DESTAQUES primeiro; se vazio, reconstrói pelo badge no DATA */
+function getDestaqueItems(key) {
+  const fromDest = DESTAQUES[key]?.items || [];
+  if (fromDest.length) {
+    return fromDest.map(it => ({
+      ...it,
+      brand: it.brand || '',
+      cat: it.cat || '',
+      line: it.line || 'outros',
+      badge: it.badge || (key === 'lojas10' ? 'LOJAS R$10' : 'OFERTA'),
+      destaque: it.destaque || key
+    }));
+  }
+  if (key === 'lojas10') return getAllProducts().filter(isLojas10);
+  if (key === 'ofertasLimitadas') return getAllProducts().filter(isOferta);
+  return [];
 }
 
 function matchesFilters(p) {
@@ -293,14 +313,15 @@ function bindCardEvents(root) {
 function renderDestaques() {
   const host = document.getElementById('destaquesHost');
   if (!host) return;
-  const ofertas = DESTAQUES.ofertasLimitadas?.items || [];
+
+  // Ofertas por tempo limitado — SEMPRE carrossel na home (aba Todos)
+  const ofertas = getDestaqueItems('ofertasLimitadas');
+  const titleOfertas = DESTAQUES.ofertasLimitadas?.title || 'Ofertas por tempo limitado';
 
   let html = '';
-
-  // Só Ofertas na home (carrossel). Lojas de R$10 ficou na aba do header.
   if (ofertas.length) {
-    html += `<section class="vitrine-section">
-      <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.ofertasLimitadas.title || 'Ofertas por tempo limitado')}</h2></div>
+    html += `<section class="vitrine-section" id="vitrineOfertasSection">
+      <div class="vitrine-head"><h2>${escapeHtml(titleOfertas)}</h2></div>
       <div class="vitrine-track" id="vitrineOfertas">
         ${ofertas.map(p => `<div class="vitrine-card">${cardHtml(p)}</div>`).join('')}
       </div>
@@ -311,19 +332,8 @@ function renderDestaques() {
   if (html) bindCardEvents(host);
 }
 
-/** Garante produtos da vitrine Lojas no pool (caso só existam em DESTAQUES) */
 function getLojas10Products() {
-  const fromData = getAllProducts().filter(isLojas10);
-  if (fromData.length) return fromData;
-  const items = DESTAQUES.lojas10?.items || [];
-  return items.map(it => ({
-    ...it,
-    brand: it.brand || '',
-    cat: it.cat || '',
-    line: it.line || 'outros',
-    badge: it.badge || 'LOJAS R$10',
-    destaque: it.destaque || 'lojas10'
-  }));
+  return getDestaqueItems('lojas10');
 }
 
 function renderProducts(resetPage=true) {
