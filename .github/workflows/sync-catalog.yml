@@ -5,18 +5,13 @@ on:
     - cron: '0 6 * * *'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   sync:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Checkout do código
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
@@ -30,8 +25,8 @@ jobs:
         env:
           GIST_ID: ${{ secrets.GIST_ID }}
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
-          CONCURRENCY: '5'
-          DELAY_MS: '80'
+          CONCURRENCY: '3'
+          DELAY_MS: '300'
         run: node scripts/sync-catalog.mjs
 
       - name: Commit catálogo atualizado (se houver mudança)
