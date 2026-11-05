@@ -15,8 +15,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const SITEMAP_URL = 'https://www.makimakesoficial.com.br/sitemap.xml';
 const MAX_PRODUCTS = parseInt(process.env.MAX_PRODUCTS || '0', 10) || Infinity;
-const CONCURRENCY = parseInt(process.env.CONCURRENCY || '2', 10);
-const DELAY_MS = parseInt(process.env.DELAY_MS || '500', 10);
+const CONCURRENCY = parseInt(process.env.CONCURRENCY || '5', 10);
+const DELAY_MS = parseInt(process.env.DELAY_MS || '80', 10);
 const MAX_GROUP_PAGES = parseInt(process.env.MAX_GROUP_PAGES || '10', 10);
 
 const LINE_MAP = {
@@ -134,10 +134,24 @@ async function fetchGroupSlugsWithPuppeteer(groupUrl) {
   const set = new Set();
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--disable-extensions'
+    ]
   });
   const page = await browser.newPage();
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  // Vitrine: bloqueia imagens/fontes (só precisamos dos links)
+  await page.setRequestInterception(true);
+  page.on('request', req => {
+    const t = req.resourceType();
+    if (t === 'image' || t === 'font' || t === 'media') req.abort();
+    else req.continue();
+  });
 
   try {
     console.log(`  Abrindo vitrine: ${groupUrl}`);
@@ -147,8 +161,8 @@ async function fetchGroupSlugsWithPuppeteer(groupUrl) {
       console.log(`    Lendo página ${pageNum}: ${url}`);
 
       try {
-        await page.goto(url, { waitUntil: 'networkidle2', timeout: 45000 });
-        await sleep(1500);
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
+        await sleep(600);
       } catch (e) {
         console.warn(`    Falha ao abrir página ${pageNum}: ${e.message}`);
         break;
@@ -196,8 +210,8 @@ async function getProductUrlsFromSitemap() {
 
 async function processProduct(url, page, specialMaps = {}) {
   try {
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
-    await sleep(800);
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await sleep(200);
 
     const html = await page.content();
     const p = extractJsonLdProduct(html);
@@ -466,14 +480,29 @@ async function main() {
   console.log(`\nProcessando ${urls.length} produtos...`);
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--no-first-run',
+      '--disable-extensions'
+    ]
   });
   const pages = await Promise.all(
     Array.from({ length: CONCURRENCY }, () => browser.newPage())
   );
   for (const p of pages) {
     await p.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+    // Produto: bloqueia imagem/fonte/css pesado — JSON-LD e texto ainda vêm no HTML
+    await p.setRequestInterception(true);
+    p.on('request', req => {
+      const t = req.resourceType();
+      if (t === 'image' || t === 'font' || t === 'media' || t === 'stylesheet') req.abort();
+      else req.continue();
+    });
   }
+  console.log(`Concorrência: ${CONCURRENCY} | delay: ${DELAY_MS}ms`);
 
   const results = [];
   let idx = 0;
@@ -483,7 +512,7 @@ async function main() {
       const i = idx++;
       const r = await processProduct(urls[i], page, specialMaps);
       if (r) results.push(r);
-      if ((i + 1) % 50 === 0) console.log(`  ... ${i + 1}/${urls.length}`);
+      if ((i + 1) % 25 === 0 || i + 1 === urls.length) console.log(`  ... ${i + 1}/${urls.length}`);
       await sleep(DELAY_MS);
     }
   }
