@@ -284,10 +284,10 @@ function renderDestaques() {
   if (!host) return;
   const lojas = DESTAQUES.lojas10?.items || [];
   const ofertas = DESTAQUES.ofertasLimitadas?.items || [];
-
+  
   let html = '';
-
-  // Ofertas continua em carrossel (poucos itens)
+  
+  // Vitrine de Ofertas
   if (ofertas.length) {
     html += `<section class="vitrine-section">
       <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.ofertasLimitadas.title || 'Ofertas por tempo limitado')}</h2></div>
@@ -296,20 +296,17 @@ function renderDestaques() {
       </div>
     </section>`;
   }
-
-  // Lojas de R$10 vira SEÇÃO em grade (não carrossel) — evita poluição visual
+  
+  // Vitrine Lojas R$10
   if (lojas.length) {
-    html += `<section class="section-grid" id="secaoLojas10">
-      <div class="section-head">
-        <h2>${escapeHtml(DESTAQUES.lojas10.title || 'Lojas de R$10,00')}</h2>
-        <span class="section-count">${lojas.length} produto${lojas.length !== 1 ? 's' : ''}</span>
-      </div>
-      <div class="section-products" id="gridLojas10">
-        ${lojas.map(p => cardHtml(p)).join('')}
+    html += `<section class="vitrine-section">
+      <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.lojas10.title || 'Lojas de R$10,00')}</h2></div>
+      <div class="vitrine-track" id="vitrineLojas">
+        ${lojas.map(p => `<div class="vitrine-card">${cardHtml(p)}</div>`).join('')}
       </div>
     </section>`;
   }
-
+  
   host.innerHTML = html;
   bindCardEvents(host);
 }
