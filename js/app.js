@@ -133,17 +133,28 @@ function findProduct(id) {
   return getAllProducts().find(p => productId(p) === id) || null;
 }
 
-// Retorna true se o produto for de vitrine (e deve ser ocultado do catálogo geral)
-function isVitrineProduct(p) {
+function isLojas10(p) {
   const b = (p.badge || '').toUpperCase();
-  return b.includes('LOJAS') || b.includes('R$10') || b.includes('OFERTA') || p.destaque;
+  return b.includes('LOJAS') || b.includes('R$10') || p.destaque === 'lojas10';
+}
+function isOferta(p) {
+  const b = (p.badge || '').toUpperCase();
+  return b.includes('OFERTA') || p.destaque === 'ofertasLimitadas';
+}
+// Vitrine (ofertas/lojas) fica fora de "Todos" e das linhas de categoria
+function isVitrineProduct(p) {
+  return isLojas10(p) || isOferta(p);
 }
 
 function matchesFilters(p) {
-  // Filtro crucial: não mostrar vitrines no meio do catálogo principal
-  if (isVitrineProduct(p)) return false;
-
-  if (currentLine !== 'all' && p.line !== currentLine) return false;
+  // Aba dedicada: Lojas de R$10,00
+  if (currentLine === 'lojas10') {
+    if (!isLojas10(p)) return false;
+  } else {
+    // Catálogo geral / categorias: esconde vitrines
+    if (isVitrineProduct(p)) return false;
+    if (currentLine !== 'all' && p.line !== currentLine) return false;
+  }
   if (searchTerm) {
     const q = searchTerm.toLowerCase();
     const hay = `${p.nome} ${p.brand} ${p.cat} ${p.volume}`.toLowerCase();
@@ -282,12 +293,11 @@ function bindCardEvents(root) {
 function renderDestaques() {
   const host = document.getElementById('destaquesHost');
   if (!host) return;
-  const lojas = DESTAQUES.lojas10?.items || [];
   const ofertas = DESTAQUES.ofertasLimitadas?.items || [];
 
   let html = '';
 
-  // Ofertas continua em carrossel (poucos itens)
+  // Só Ofertas na home (carrossel). Lojas de R$10 ficou na aba do header.
   if (ofertas.length) {
     html += `<section class="vitrine-section">
       <div class="vitrine-head"><h2>${escapeHtml(DESTAQUES.ofertasLimitadas.title || 'Ofertas por tempo limitado')}</h2></div>
@@ -297,21 +307,23 @@ function renderDestaques() {
     </section>`;
   }
 
-  // Lojas de R$10 vira SEÇÃO em grade (não carrossel) — evita poluição visual
-  if (lojas.length) {
-    html += `<section class="section-grid" id="secaoLojas10">
-      <div class="section-head">
-        <h2>${escapeHtml(DESTAQUES.lojas10.title || 'Lojas de R$10,00')}</h2>
-        <span class="section-count">${lojas.length} produto${lojas.length !== 1 ? 's' : ''}</span>
-      </div>
-      <div class="section-products" id="gridLojas10">
-        ${lojas.map(p => cardHtml(p)).join('')}
-      </div>
-    </section>`;
-  }
-
   host.innerHTML = html;
-  bindCardEvents(host);
+  if (html) bindCardEvents(host);
+}
+
+/** Garante produtos da vitrine Lojas no pool (caso só existam em DESTAQUES) */
+function getLojas10Products() {
+  const fromData = getAllProducts().filter(isLojas10);
+  if (fromData.length) return fromData;
+  const items = DESTAQUES.lojas10?.items || [];
+  return items.map(it => ({
+    ...it,
+    brand: it.brand || '',
+    cat: it.cat || '',
+    line: it.line || 'outros',
+    badge: it.badge || 'LOJAS R$10',
+    destaque: it.destaque || 'lojas10'
+  }));
 }
 
 function renderProducts(resetPage=true) {
@@ -320,9 +332,9 @@ function renderProducts(resetPage=true) {
   const empty = document.getElementById('empty');
   const moreWrap = document.getElementById('loadMoreWrap');
   const stats = document.getElementById('resultStats');
-  
-  // O filtro matchesFilters já remove as vitrines daqui
-  const filtered = sortProducts(getAllProducts().filter(matchesFilters));
+
+  const pool = currentLine === 'lojas10' ? getLojas10Products() : getAllProducts();
+  const filtered = sortProducts(pool.filter(matchesFilters));
   detailsNavList = filtered;
   const total = filtered.length;
   const visible = filtered.slice(0, page * PAGE_SIZE);
@@ -712,6 +724,9 @@ document.getElementById('tabs')?.addEventListener('click', e => {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   currentLine = btn.dataset.line || 'all';
+  // Ofertas só na home (Todos); nas outras abas some a vitrine
+  const dest = document.getElementById('destaquesHost');
+  if (dest) dest.style.display = currentLine === 'all' ? '' : 'none';
   renderProducts(true);
 });
 document.getElementById('searchInput')?.addEventListener('input', e => { searchTerm=e.target.value.trim(); renderProducts(true); });
