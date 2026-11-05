@@ -70,6 +70,15 @@ function norm(s) {
   return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 }
 
+/** Normaliza URL/slug de produto para matching estável nas vitrines */
+function normalizeSlug(urlOrSlug) {
+  let s = String(urlOrSlug || '').trim();
+  s = s.replace(/^https?:\/\/(www\.)?makimakesoficial\.com\.br\//i, '');
+  s = s.replace(/^\//, '').split('?')[0].split('#')[0];
+  if (s.endsWith('/') && !s.endsWith('/p/')) s = s.slice(0, -1);
+  return s;
+}
+
 function mapLine(category, name = '') {
   const cat = norm(category);
   const n = norm(name);
@@ -183,7 +192,7 @@ async function fetchGroupSlugsWithPuppeteer(groupUrl) {
 
       let added = 0;
       for (const href of links) {
-        let slug = href.replace(/^https?:\/\/www\.makimakesoficial\.com\.br\//, '').replace(/^\//, '');
+        const slug = normalizeSlug(href);
         if (slug.endsWith('/p') && !set.has(slug)) {
           set.add(slug);
           added++;
@@ -235,10 +244,10 @@ async function processProduct(url, page, specialMaps = {}) {
     }
     if (basePrice <= 0) return null;
 
-    const slug = url.replace(/^https?:\/\/www\.makimakesoficial\.com\.br\//, '').replace(/^\//, '');
+    const slug = normalizeSlug(url);
     let specialKey = null;
     for (const [key, set] of Object.entries(specialMaps)) {
-      if (set.has(slug)) { specialKey = key; break; }
+      if (set.has(slug) || set.has(slug.replace(/\/$/, ''))) { specialKey = key; break; }
     }
 
     const prices = specialKey
@@ -541,6 +550,8 @@ async function main() {
   fs.writeFileSync(rootPublic, JSON.stringify(publicOutput, null, 2));
 
   console.log('\n--- Resultado ---');
+  const marked = results.filter(r => r.specialKey).length;
+  console.log('Produtos marcados como vitrine (specialKey):', marked);
   console.log('Destaques Lojas R$10:', publicOutput.DESTAQUES.lojas10?.items?.length || 0);
   console.log('Destaques Ofertas:', publicOutput.DESTAQUES.ofertasLimitadas?.items?.length || 0);
   console.log('Total produtos processados:', results.length);
