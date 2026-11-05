@@ -1,10 +1,10 @@
 /**
  * Proxy de estoque ao vivo — allowlist de host.
- * Mantido como estava. Sem alterações funcionais.
+ * ESM (package.json type: module)
  */
 const ALLOWED_HOST = 'www.makimakesoficial.com.br';
 
-exports.handler = async (event) => {
+export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -43,7 +43,11 @@ exports.handler = async (event) => {
     });
     clearTimeout(timer);
     if (!res.ok) {
-      return { statusCode: 200, headers, body: JSON.stringify({ disponivel: null, source: 'http-error', status: res.status }) };
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ disponivel: null, source: 'http-error', status: res.status })
+      };
     }
     const html = (await res.text()).slice(0, 500000);
 
@@ -57,9 +61,17 @@ exports.handler = async (event) => {
       disponivel = 'Sim';
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify({ disponivel, source: 'live' }) };
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ disponivel, source: 'live' })
+    };
   } catch (e) {
     clearTimeout(timer);
-    return { statusCode: 200, headers, body: JSON.stringify({ disponivel: null, source: 'error', message: String(e.message || e) }) };
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ disponivel: null, source: 'error', message: String(e.message || e) })
+    };
   }
-};
+}

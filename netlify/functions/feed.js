@@ -6,6 +6,7 @@
  *   SITE_URL          → https://emporioar-beauty.netlify.app
  *
  * Sem GIST_CATALOG_URL, retorna 501 (não publica feed vazio enganoso).
+ * ESM (package.json type: module)
  */
 const GIST_URL = process.env.GIST_CATALOG_URL;
 const SITE_URL = process.env.SITE_URL || 'https://emporioar-beauty.netlify.app';
@@ -26,7 +27,7 @@ function normId(s = '') {
     .replace(/^-+|-+$/g, '');
 }
 
-exports.handler = async () => {
+export async function handler() {
   if (!GIST_URL) {
     return {
       statusCode: 501,
@@ -88,4 +89,4 @@ ${items.join('\n')}
       body: 'Erro ao gerar feed: ' + (e.message || e),
     };
   }
-};
+}
