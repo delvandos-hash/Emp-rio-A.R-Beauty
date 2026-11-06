@@ -2,7 +2,7 @@
  * Empório A.R. Beauty — Catálogo completo
  * Melhorias: favoritos (botão + modal + ordenação + add all),
  * nome/CEP lembrados, múltiplas variações, botões +/- no carrinho,
- * botão voltar ao topo e badge "já no carrinho" nos cards.
+ * botão voltar ao topo, badge "já no carrinho" e correção do aviso de atacado.
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
@@ -214,7 +214,6 @@ function sortProducts(list) {
 function saveCart() {
   safeSet('cart_maquiagem', cart);
   updateCartBadge();
-  // Atualiza cards visíveis (badge "já no carrinho")
   refreshInCartBadges();
 }
 function updateCartBadge() {
@@ -224,7 +223,6 @@ function updateCartBadge() {
 }
 function isProductInCart(p) {
   const baseId = productId(p);
-  // Produto entra no carrinho se existir qualquer variação OU ele sem variação
   if (cart[baseId]) return true;
   for (const id of Object.keys(cart)) {
     if (id === baseId || id.startsWith(baseId + '|')) return true;
@@ -232,7 +230,6 @@ function isProductInCart(p) {
   return false;
 }
 
-/** Atualiza o botão do card e o badge "Já no carrinho" sem re-renderizar tudo */
 function refreshInCartBadges() {
   document.querySelectorAll('.card').forEach(card => {
     const id = card.dataset.id;
@@ -420,7 +417,6 @@ function renderProducts(resetPage=true) {
   bindCardEvents(container);
 }
 
-/** Constrói os botões de variação (seleção múltipla) */
 function buildVariacoesHtml(p) {
   const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
   if (!vars.length) return '';
@@ -703,10 +699,19 @@ function renderCart() {
       <div style="font-size:1rem;font-weight:800;margin-top:.15rem">Itens: ${totalItems} · Total: R$ ${formatPrice(subtotal)}</div>
     </div>`;
 
+  // CORREÇÃO: Lógica para exibir aviso de atacado corretamente
   const temAtacado = lines.some(l => l.tipo === 'Atacado');
-  const avisoHtml = temAtacado
-    ? `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado (6+ itens)</div>`
-    : '';
+  const todosSomenteAtacado = lines.every(l => l.p.somenteAtacado === true);
+  const atingiuAtacadoPorQtd = lines.some(l => !l.p.somenteAtacado && l.qty >= 6);
+
+  let avisoHtml = '';
+  if (todosSomenteAtacado) {
+    // Se todos os itens são boxes/caixas (somente atacado), não cita "6+"
+    avisoHtml = `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado</div>`;
+  } else if (temAtacado) {
+    // Se tem uma mistura (ou atingiu 6+), mantém a explicação
+    avisoHtml = `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado (6+ itens)</div>`;
+  }
 
   const itemsHtml = lines.map(({id,p,qty,price,tipo,lineTotal}) => {
     let varHtml = p.variacaoSelecionada
