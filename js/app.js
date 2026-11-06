@@ -317,7 +317,7 @@ function cardHtml(p) {
   return `<article class="card" data-id="${eid}">
     <button class="fav ${isFav?'active':''}" data-fav="${eid}" aria-label="Favoritar" aria-pressed="${isFav?'true':'false'}">♥</button>
     <div class="photo" data-open="${eid}">${badgeHtml}${cartBadgeHtml}
-      <img src="${foto}" alt="${nome}" width="72" height="72" loading="lazy" data-fallback="https://via.placeholder.com/150?text=Sem+foto"/>
+      <img src="${foto}" alt="${nome}" width="72" height="72" loading="lazy" decoding="async" data-fallback="https://via.placeholder.com/150?text=Sem+foto"/>
     </div>
     <div class="info">
       <div class="name" data-open="${eid}">${nome}</div>
@@ -529,7 +529,7 @@ function openDetails(p, opts={}) {
       <button type="button" class="nav-btn" id="detNext" ${detailsNavIndex>=detailsNavList.length-1?'disabled':''} aria-label="Próximo">›</button>
     </div>
     <div class="details-photo">
-      <img src="${mainFoto}" alt="${nome}" id="detailsMainImg" width="280" height="280" data-fallback="https://via.placeholder.com/400?text=Sem+foto"/>
+      <img src="${mainFoto}" alt="${nome}" id="detailsMainImg" width="280" height="280" loading="lazy" data-fallback="https://via.placeholder.com/400?text=Sem+foto"/>
       ${thumbs?`<div class="details-thumbs">${thumbs}</div>`:''}
     </div>
     <h3 class="details-title">${nome}</h3>
