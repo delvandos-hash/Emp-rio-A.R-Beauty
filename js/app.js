@@ -1,5 +1,5 @@
 /**
- * Empório A.R. Beauty — Catálogo completo com os 15 itens de melhorias
+ * Empório A.R. Beauty — Catálogo completo
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
@@ -31,25 +31,16 @@ function saveBuyMeta(nome, cep, cidade = '', uf = '') {
   safeSet(BUY_META_KEY, { nome: (nome ?? prev.nome ?? '').trim(), cep: (cep ?? prev.cep ?? '').trim(), cidade: cidade || prev.cidade, uf: uf || prev.uf });
 }
 
-// Variáveis de Estado
-let currentLine = 'all';
-let searchTerm = '';
-let filterDisp = 'all';
-let filterPreco = 'all';
-let filterMarca = 'all';
-let sortBy = 'default';
-let page = 1;
+// Estado global
+let DATA = {}, DESTAQUES = {}, WHATSAPP = '5562991134488';
+let currentLine = 'all', searchTerm = '', filterDisp = 'all', filterPreco = 'all', filterMarca = 'all', sortBy = 'default', page = 1;
 const favorites = new Set(safeGet('fav_maquiagem', []));
 let favoritesSort = safeGet('fav_sort', 'added');
 let cart = safeGet('cart_maquiagem', {});
 const stockCache = new Map();
 let allProductsCache = null;
-let detailsNavList = [];
-let detailsNavIndex = 0;
-let detailsScrollY = 0;
-let buyProduct = null;
-let currentProduct = null;
-let preloadedImageLink = null;
+let detailsNavList = [], detailsNavIndex = 0, detailsScrollY = 0;
+let buyProduct = null, currentProduct = null, preloadedImageLink = null;
 
 function setSeo(title, desc, url, img) {
   document.title = title;
@@ -63,13 +54,10 @@ function setSeo(title, desc, url, img) {
 function updateSeoForProduct(p) {
   const url = window.location.href;
   setSeo(displayName(p.nome) + ' | Empório A.R. Beauty', (decodeHtml(p.notas||'').slice(0, 150)) || displayName(p.nome), url, p.foto);
-  // Preload da imagem principal
   if (preloadedImageLink) preloadedImageLink.remove();
   if (p.foto) {
     preloadedImageLink = document.createElement('link');
-    preloadedImageLink.rel = 'preload';
-    preloadedImageLink.as = 'image';
-    preloadedImageLink.href = p.foto;
+    preloadedImageLink.rel = 'preload'; preloadedImageLink.as = 'image'; preloadedImageLink.href = p.foto;
     document.head.appendChild(preloadedImageLink);
   }
 }
@@ -84,17 +72,17 @@ async function loadCatalogData() {
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) continue;
       const j = JSON.parse((await res.text()).replace(/^\uFEFF/, ''));
-      if (j && j.DATA) { console.log('Catálogo de', url); return j; }
-    } catch (e) { console.warn(url, e); }
+      if (j && j.DATA && Object.keys(j.DATA).length > 0) return j;
+    } catch (e) { console.warn('Falha no fetch:', url, e); }
   }
   return null;
 }
 
 async function init() {
-  // Skeleton loading
   const boot = document.getElementById('bootStatus');
   if (boot) {
     boot.style.display = 'grid';
+    boot.innerHTML = '';
     for (let i = 0; i < 6; i++) {
       boot.innerHTML += `<div class="skeleton-card"><div class="skeleton-photo"></div><div class="skeleton-lines"><div class="skeleton-line w-80"></div><div class="skeleton-line w-60"></div><div class="skeleton-line w-40"></div></div></div>`;
     }
@@ -108,18 +96,17 @@ async function init() {
     return;
   }
 
-  window.DATA = dados.DATA;
-  window.DESTAQUES = dados.DESTAQUES || {};
-  window.WHATSAPP = dados.WHATSAPP || '5562991134488';
+  DATA = dados.DATA;
+  DESTAQUES = dados.DESTAQUES || {};
+  WHATSAPP = dados.WHATSAPP || '5562991134488';
 
   if (boot) boot.style.display = 'none';
   
-  // Restore Filtros
-  currentLine = safeGet('emporio_filters', {}).line || 'all';
-  searchTerm = safeGet('emporio_filters', {}).search || '';
-  filterMarca = safeGet('emporio_filters', {}).marca || 'all';
+  const savedFilters = safeGet('emporio_filters', {});
+  currentLine = savedFilters.line || 'all';
+  searchTerm = savedFilters.search || '';
+  filterMarca = savedFilters.marca || 'all';
   
-  // Aplicar nos inputs
   document.getElementById('searchInput').value = searchTerm;
   document.querySelectorAll('#tabs .tab').forEach(t => t.classList.toggle('active', t.dataset.line === currentLine));
   
@@ -134,12 +121,13 @@ async function init() {
   initPwa();
   setupCepAutoFill('buyCep', 'buyNome', 'cepStatus');
   setupCepAutoFill('checkoutCep', 'checkoutNome', 'checkoutCepStatus');
+  bindGlobalEvents();
 }
 
 function getAllProducts() {
   if (allProductsCache) return allProductsCache;
   const list = [];
-  for (const [line, groups] of Object.entries(window.DATA || {})) {
+  for (const [line, groups] of Object.entries(DATA || {})) {
     for (const g of groups || []) {
       for (const it of g.items || []) {
         list.push({ ...it, brand: g.brand, cat: g.cat, line });
@@ -156,7 +144,7 @@ function isOferta(p) { const b = (p.badge || '').toUpperCase(); const d = (p.des
 function isVitrineProduct(p) { return isLojas10(p) || isOferta(p); }
 
 function getDestaqueItems(key) {
-  const fromDest = window.DESTAQUES[key]?.items || [];
+  const fromDest = DESTAQUES[key]?.items || [];
   if (fromDest.length) return fromDest.map(it => ({ ...it, brand: it.brand || '', cat: it.cat || '', line: it.line || 'outros', badge: it.badge || (key === 'lojas10' ? 'LOJAS R$10' : 'OFERTA'), destaque: it.destaque || key }));
   if (key === 'lojas10') return getAllProducts().filter(isLojas10);
   if (key === 'ofertasLimitadas') return getAllProducts().filter(isOferta);
@@ -173,7 +161,6 @@ function populateBrands() {
     if (currentLine !== 'all' && currentLine !== 'lojas10' && p.line !== currentLine) return;
     if (p.brand) brands.add(p.brand);
   });
-  
   const sorted = [...brands].sort();
   sel.innerHTML = '<option value="all">Todas as marcas</option>' + sorted.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
   if (sorted.includes(filterMarca)) sel.value = filterMarca; else filterMarca = 'all';
@@ -189,13 +176,10 @@ function updateSessionCounters() {
       if (counts[p.line] !== undefined) counts[p.line]++;
     }
   });
-  
   document.querySelectorAll('#tabs .tab').forEach(btn => {
     const line = btn.dataset.line;
     const baseName = btn.textContent.split('(')[0].trim();
-    if (counts[line] !== undefined) {
-      btn.textContent = `${baseName} (${counts[line]})`;
-    }
+    if (counts[line] !== undefined) btn.textContent = `${baseName} (${counts[line]})`;
   });
 }
 
@@ -233,9 +217,7 @@ function updateMobileCartBar() {
     document.getElementById('mobileCartCount').textContent = totalItems;
     document.getElementById('mobileCartTotal').textContent = formatPrice(subtotal);
     bar.classList.add('show');
-  } else {
-    bar.classList.remove('show');
-  }
+  } else { bar.classList.remove('show'); }
 }
 
 function isProductInCart(p) {
@@ -376,7 +358,7 @@ function renderDestaques() {
   const host = document.getElementById('destaquesHost');
   if (!host) return;
   const ofertas = getDestaqueItems('ofertasLimitadas');
-  const titleOfertas = window.DESTAQUES.ofertasLimitadas?.title || 'Ofertas por tempo limitado';
+  const titleOfertas = DESTAQUES.ofertasLimitadas?.title || 'Ofertas por tempo limitado';
   let html = '';
   if (ofertas.length) {
     html += `<section class="vitrine-section" id="vitrineOfertasSection"><div class="vitrine-head"><h2>${escapeHtml(titleOfertas)}</h2></div><div class="vitrine-track" id="vitrineOfertas">${ofertas.map(p => `<div class="vitrine-card">${cardHtml(p)}</div>`).join('')}</div></section>`;
@@ -602,7 +584,7 @@ function confirmBuy() {
   let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n*${displayName(buyProduct.nome)}*${varText}\n${buyProduct.brand||''} · ${buyProduct.volume||''}\nQtd: ${qty}\nPreço (${tipo}): R$ ${formatPrice(price)}\nSubtotal: R$ ${formatPrice(price*qty)}\n\n`;
   if (nome) msg += `Nome: ${nome}\n`;
   if (cep) msg += `CEP: ${cep} ${loadBuyMeta().cidade ? `(${loadBuyMeta().cidade}/${loadBuyMeta().uf})` : ''}\n`;
-  window.open(`https://wa.me/${window.WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
   closeModal('buyModal');
 }
 
@@ -730,11 +712,53 @@ function confirmCartCheckout() {
   msg += `*Total (${totalItems} itens): R$ ${formatPrice(subtotal)}*\n\n`;
   if (nome) msg += `Nome: ${nome}\n`;
   if (cep) msg += `CEP: ${cep} ${loadBuyMeta().cidade ? `(${loadBuyMeta().cidade}/${loadBuyMeta().uf})` : ''}\n`;
-  window.open(`https://wa.me/${window.WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
+  window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent(msg)}`,'_blank');
   closeModal('checkoutModal');
 }
 
-// ... Funções de Favoritos, PWA, CEP, Voltar ao Topo, Swipe, Share ...
+// Favoritos
+function updateFavBadge() { const badge = document.getElementById('favBadge'); if (badge) { const n = favorites.size; badge.textContent = n; badge.style.display = n > 0 ? 'flex' : 'none'; } }
+function openFavoritesModal() { renderFavoritesList(); openModal('favoritesModal'); }
+function sortFavoriteProducts(list) {
+  const arr = list.slice();
+  if (favoritesSort === 'name-asc') arr.sort((a,b)=>displayName(a.nome).localeCompare(displayName(b.nome),'pt-BR'));
+  else if (favoritesSort === 'name-desc') arr.sort((a,b)=>displayName(b.nome).localeCompare(displayName(a.nome),'pt-BR'));
+  else if (favoritesSort === 'price-asc') arr.sort((a,b)=>parsePrice(a.somenteAtacado?a.atacado:a.varejo)-parsePrice(b.somenteAtacado?b.atacado:b.varejo));
+  else if (favoritesSort === 'price-desc') arr.sort((a,b)=>parsePrice(b.somenteAtacado?b.atacado:b.varejo)-parsePrice(a.somenteAtacado?a.atacado:a.varejo));
+  return arr;
+}
+function renderFavoritesList() {
+  const list = document.getElementById('favoritesList'); const toolbar = document.getElementById('favoritesToolbar'); const countLabel = document.getElementById('favoritesCountLabel'); const addAllBtn = document.getElementById('btnAddAllFav'); const titleEl = document.getElementById('favoritesTitle');
+  if (!list) return;
+  if (titleEl) titleEl.textContent = favorites.size ? `♥ Meus Favoritos (${favorites.size})` : '♥ Meus Favoritos';
+  const ids = [...favorites];
+  if (!ids.length) { list.innerHTML = '<p class="cart-empty">Nenhum produto favoritado ainda.<br><small>Toque no ♥ de qualquer produto para salvar.</small></p>'; if (toolbar) toolbar.style.display = 'none'; if (addAllBtn) addAllBtn.style.display = 'none'; return; }
+  const products = ids.map(id => findProduct(id)).filter(Boolean);
+  if (!products.length) { list.innerHTML = '<p class="cart-empty">Nenhum produto favoritado ainda.</p>'; if (toolbar) toolbar.style.display = 'none'; if (addAllBtn) addAllBtn.style.display = 'none'; return; }
+  if (toolbar) toolbar.style.display = 'flex'; if (countLabel) countLabel.textContent = `${products.length} item(ns)`; if (addAllBtn) addAllBtn.style.display = '';
+  const sortSelect = document.getElementById('favoritesSort'); if (sortSelect) sortSelect.value = favoritesSort;
+  const sorted = sortFavoriteProducts(products);
+  list.innerHTML = sorted.map(p => {
+    const id = productId(p); const foto = escapeHtml(p.foto || (p.fotos && p.fotos[0]) || ''); const disp = (p.disponivel||'').toLowerCase()==='sim';
+    const priceHtml = p.somenteAtacado ? `<span class="price-a">R$ ${escapeHtml(p.atacado)}</span>` : `Varejo R$ ${escapeHtml(p.varejo)} · Atacado R$ ${escapeHtml(p.atacado)}`;
+    return `<div class="cart-item"><img src="${foto}" alt="" width="52" height="52" data-fallback="https://via.placeholder.com/52?text=?"/><div class="cart-item-info"><div class="cart-item-name">${escapeHtml(displayName(p.nome))}</div><div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(p.volume||'')} ${disp?'':' · <span class="stock-out">Esgotado</span>'}</div><div class="cart-item-price">${priceHtml}</div><div style="display:flex;gap:.35rem;margin-top:.35rem;flex-wrap:wrap"><button type="button" class="btn-sm btn-details" data-fav-open="${escapeHtml(id)}">Detalhes</button><button type="button" class="btn-sm btn-cart" data-fav-addcart="${escapeHtml(id)}">Carrinho</button><button type="button" class="btn-sm" style="background:#fee2e2;color:#b91c1c" data-fav-remove="${escapeHtml(id)}">Remover</button></div></div></div>`;
+  }).join('');
+  list.querySelectorAll('[data-fav-open]').forEach(btn => btn.addEventListener('click', () => { const p = findProduct(btn.dataset.favOpen); if (p) { closeModal('favoritesModal'); openDetails(p); } }));
+  list.querySelectorAll('[data-fav-addcart]').forEach(btn => btn.addEventListener('click', () => { const p = findProduct(btn.dataset.favAddcart); if (p) { addToCart(p, 1); renderFavoritesList(); } }));
+  list.querySelectorAll('[data-fav-remove]').forEach(btn => btn.addEventListener('click', () => { favorites.delete(btn.dataset.favRemove); safeSet('fav_maquiagem', [...favorites]); updateFavBadge(); const cardFav = document.querySelector(`[data-fav="${CSS.escape(btn.dataset.favRemove)}"]`); if (cardFav) { cardFav.classList.remove('active'); cardFav.setAttribute('aria-pressed','false'); } renderFavoritesList(); }));
+}
+function addAllFavoritesToCart() {
+  const ids = [...favorites]; if (!ids.length) return; let added = 0;
+  ids.forEach(id => {
+    const p = findProduct(id); if (!p || (p.disponivel||'').toLowerCase() !== 'sim') return;
+    if (Array.isArray(p.variacoes) && p.variacoes.length) {
+      const v = p.variacoes.find(x => x.estoque === undefined || Number(x.estoque) > 0);
+      if (v) { addToCart({ ...p, variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || '') } }, 1); added++; }
+    } else { addToCart(p, 1); added++; }
+  });
+  if (added) { showToast(`${added} item(ns) adicionado(s) ao carrinho`); renderFavoritesList(); } else { showToast('Nenhum favorito disponível.'); }
+}
+
 function shareProduct(p) {
   const url = new URL(window.location.href); url.searchParams.set('produto', productId(p)); url.hash = '';
   const text = `Confira *${displayName(p.nome)}* no Empório A.R. Beauty!\nVarejo: R$ ${p.varejo || '—'}\nAtacado: R$ ${p.atacado || '—'}\n\n${url.toString()}`;
@@ -742,24 +766,129 @@ function shareProduct(p) {
   else { navigator.clipboard.writeText(text).then(()=>showToast('Link copiado!')).catch(()=>alert('Erro ao copiar.')); }
 }
 
+// CEP
 function setupCepAutoFill(inputId, nameId, statusId) {
-  const input = document.getElementById(inputId);
-  if (!input) return;
+  const input = document.getElementById(inputId); if (!input) return;
   input.addEventListener('blur', async () => {
-    const cep = input.value.replace(/\D/g,'');
-    if (cep.length !== 8) return;
-    const status = document.getElementById(statusId);
-    if (status) status.textContent = 'Buscando CEP...';
+    const cep = input.value.replace(/\D/g,''); if (cep.length !== 8) return;
+    const status = document.getElementById(statusId); if (status) status.textContent = 'Buscando CEP...';
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await res.json();
+      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); const data = await res.json();
       if (data.erro) { if (status) status.textContent = 'CEP não encontrado.'; return; }
-      const cidade = data.localidade, uf = data.uf;
-      if (status) status.textContent = `${cidade} - ${uf}`;
-      saveBuyMeta(document.getElementById(nameId)?.value || loadBuyMeta().nome, input.value, cidade, uf);
+      if (status) status.textContent = `${data.localidade} - ${data.uf}`;
+      saveBuyMeta(document.getElementById(nameId)?.value || loadBuyMeta().nome, input.value, data.localidade, data.uf);
     } catch { if (status) status.textContent = 'Falha ao buscar CEP.'; }
   });
 }
 
-// Iniciar tudo
+// PWA
+let deferredPrompt;
+function initPwa() {
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault(); deferredPrompt = e;
+    document.getElementById('pwaBanner').classList.add('show');
+  });
+  document.getElementById('pwaInstallBtn')?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') document.getElementById('pwaBanner').classList.remove('show');
+    deferredPrompt = null;
+  });
+  document.getElementById('pwaCloseBtn')?.addEventListener('click', () => document.getElementById('pwaBanner').classList.remove('show'));
+}
+
+// Modais e Utils
+function openModal(id) { const m = document.getElementById(id); if (!m) return; m.classList.add('open'); m.setAttribute('aria-hidden', 'false'); document.body.style.overflow = 'hidden'; m.querySelector('button, input')?.focus(); }
+function closeModal(id) {
+  const m = document.getElementById(id); m?.classList.remove('open'); m?.setAttribute('aria-hidden','true');
+  if (!document.querySelector('.modal.open, #cartPanel.open')) document.body.style.overflow = '';
+  if (id === 'detailsModal') { try { const url = new URL(window.location.href); url.searchParams.delete('produto'); history.replaceState({}, '', url.pathname + url.search); resetSeoToHome(); } catch(_){} requestAnimationFrame(() => window.scrollTo(0, detailsScrollY||0)); }
+}
+function showToast(msg) { let t = document.getElementById('toast'); if (!t) { t=document.createElement('div'); t.id='toast'; t.setAttribute('role','status'); document.body.appendChild(t); } t.textContent = msg; t.classList.add('show'); clearTimeout(showToast._timer); showToast._timer = setTimeout(()=>t.classList.remove('show'), 2400); }
+
+function initSwipeDetails() {
+  const overlay = document.getElementById('detailsModal'); if (!overlay || overlay.dataset.swipeReady) return; overlay.dataset.swipeReady = '1';
+  const box = overlay.querySelector('.modal-box'); if (!box) return;
+  let startY=0, startX=0, mode=null, dragging=false;
+  const onStart = (y,x) => { if (!overlay.classList.contains('open')) return; startY=y; startX=x; mode=null; dragging=true; box.style.transition='none'; };
+  const onMove = (y,x) => {
+    if (!dragging) return; const dy=y-startY, dx=x-startX;
+    if (!mode) { if (Math.abs(dy)>8 && Math.abs(dy)>Math.abs(dx)) mode='v'; else if (Math.abs(dx)>8 && Math.abs(dx)>Math.abs(dy)) mode='h'; }
+    if (mode==='v' && dy>0) { const p = Math.min(dy/280,1); box.style.transform = `translateY(${dy}px) scale(${1-p*0.03})`; box.style.opacity = String(1-p*0.35); }
+    else if (mode==='h') { box.style.transform = `translateX(${dx}px)`; }
+  };
+  const onEnd = (y,x) => {
+    if (!dragging) return; dragging=false; const dy=y-startY, dx=x-startX;
+    box.style.transition = 'transform .28s ease, opacity .28s ease';
+    if (mode==='v' && dy>110) { closeModal('detailsModal'); }
+    else if (mode==='h' && Math.abs(dx)>70) {
+      const next = dx<0 ? detailsNavIndex+1 : detailsNavIndex-1;
+      if (next>=0 && next<detailsNavList.length) showDetailsAt(next, dx<0?'left':'right');
+      else { box.style.transform=''; box.style.opacity=''; }
+    } else { box.style.transform=''; box.style.opacity=''; }
+    mode=null; setTimeout(()=>{ box.style.transition=''; box.style.transform=''; box.style.opacity=''; }, 300);
+  };
+  box.addEventListener('touchstart', e => onStart(e.touches[0].clientY, e.touches[0].clientX), {passive:true});
+  box.addEventListener('touchmove', e => onMove(e.touches[0].clientY, e.touches[0].clientX), {passive:true});
+  box.addEventListener('touchend', e => onEnd(e.changedTouches[0].clientY, e.changedTouches[0].clientX), {passive:true});
+}
+
+function openProductFromUrl() {
+  try { const id = new URLSearchParams(window.location.search).get('produto'); if (!id) return; const p = findProduct(id); if (p) openDetails(p); } catch(_){}
+}
+
+function bindGlobalEvents() {
+  document.getElementById('tabs')?.addEventListener('click', e => {
+    const btn = e.target.closest('.tab'); if (!btn) return;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
+    currentLine = btn.dataset.line || 'all';
+    const dest = document.getElementById('destaquesHost'); if (dest) dest.style.display = currentLine === 'all' ? '' : 'none';
+    saveFilters(); populateBrands(); renderProducts(true);
+  });
+  document.getElementById('searchInput')?.addEventListener('input', e => { searchTerm=e.target.value.trim(); saveFilters(); renderProducts(true); });
+  document.getElementById('filterMarca')?.addEventListener('change', e => { filterMarca=e.target.value; saveFilters(); renderProducts(true); });
+  document.getElementById('filterDisponivel')?.addEventListener('change', e => { filterDisp=e.target.value; renderProducts(true); });
+  document.getElementById('filterPreco')?.addEventListener('change', e => { filterPreco=e.target.value; renderProducts(true); });
+  document.getElementById('sortBy')?.addEventListener('change', e => { sortBy=e.target.value; renderProducts(true); });
+  document.getElementById('btnLoadMore')?.addEventListener('click', () => { page+=1; renderProducts(false); });
+  document.getElementById('btnOpenCart')?.addEventListener('click', openCart);
+  document.getElementById('btnOpenFavorites')?.addEventListener('click', openFavoritesModal);
+  document.getElementById('cartOverlay')?.addEventListener('click', closeCart);
+  document.getElementById('btnCloseCart')?.addEventListener('click', closeCart);
+  document.getElementById('buyQty')?.addEventListener('input', updateBuyPricePreview);
+  document.getElementById('btnConfirmBuy')?.addEventListener('click', confirmBuy);
+  document.getElementById('btnConfirmCheckout')?.addEventListener('click', confirmCartCheckout);
+  document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => closeModal(el.dataset.close)));
+  document.getElementById('favoritesSort')?.addEventListener('change', e => { favoritesSort = e.target.value || 'added'; safeSet('fav_sort', favoritesSort); renderFavoritesList(); });
+  document.getElementById('btnAddAllFav')?.addEventListener('click', addAllFavoritesToCart);
+  document.getElementById('fabWhatsApp')?.addEventListener('click', () => {
+    if (cartTotals().lines.length) { openCart(); return; }
+    window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent('Olá! Vim pelo catálogo Empório A.R. Beauty e gostaria de atendimento.')}`,'_blank');
+  });
+  window.addEventListener('popstate', () => { if (document.getElementById('detailsModal')?.classList.contains('open')) closeModal('detailsModal'); });
+  document.addEventListener('keydown', e => {
+    const openModalEl = document.querySelector('.modal.open');
+    if (openModalEl) {
+      if (e.key === 'Escape') { const id = openModalEl.id; if (id) closeModal(id); }
+      if (e.key === 'Tab') {
+        const focusables = openModalEl.querySelectorAll('button, [href], input, select, textarea'); if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length-1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    if (!document.getElementById('detailsModal')?.classList.contains('open')) return;
+    if (e.key === 'ArrowRight') showDetailsAt(detailsNavIndex+1,'left');
+    if (e.key === 'ArrowLeft') showDetailsAt(detailsNavIndex-1,'right');
+  });
+  
+  const btnBackToTop = document.getElementById('btnBackToTop');
+  if (btnBackToTop) {
+    window.addEventListener('scroll', () => { btnBackToTop.style.display = window.scrollY > 450 ? 'flex' : 'none'; }, { passive: true });
+    btnBackToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
+  }
+}
+
+// Iniciar
 init();
