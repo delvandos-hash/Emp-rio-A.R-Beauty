@@ -1,41 +1,24 @@
 [build]
   publish = "."
-  # Não executar build de npm (site estático); functions empacotadas pelo Netlify
-  command = "echo 'static site + functions'"
+  functions = "netlify/functions"
+  # Pula o build se a mudança for só catálogo / data / workflows (economiza crédito)
+  # exit 0 = cancela build | exit != 0 = executa build
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!catalogo.json' ':!catalogo.generated.json' ':!data/**' ':!.github/**' ':!README.md' ':!*.md'"
 
 [functions]
   directory = "netlify/functions"
-  node_bundler = "esbuild"
 
-# Feed Google Merchant
-[[redirects]]
-  from = "/feed.xml"
-  to = "/.netlify/functions/feed"
-  status = 200
-  force = true
-
-# Bloquear JSON interno / caminhos sensíveis (mesmo se subirem por engano)
-[[redirects]]
-  from = "/catalogo.generated.json"
-  to = "/.netlify/functions/blocked"
-  status = 404
-  force = true
-
-[[redirects]]
-  from = "/data/*"
-  to = "/.netlify/functions/blocked"
-  status = 404
-  force = true
-
-# ===== Headers de segurança + CSP =====
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
-    Content-Security-Policy = "default-src 'self'; img-src 'self' https://makimakes.jetassets.com.br https://via.placeholder.com data:; connect-src 'self' https://gist.githubusercontent.com https://emporioar-beauty.netlify.app https://makimakes.jetassets.com.br; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/js/*"
@@ -43,33 +26,11 @@
     Cache-Control = "public, max-age=60, must-revalidate"
 
 [[headers]]
-  for = "/index.html"
-  [headers.values]
-    Cache-Control = "public, max-age=0, must-revalidate"
-
-[[headers]]
   for = "/catalogo.json"
   [headers.values]
     Cache-Control = "public, max-age=120"
 
 [[headers]]
-  for = "/assets/*"
+  for = "/*.html"
   [headers.values]
-    Cache-Control = "public, max-age=86400"
-
-[[headers]]
-  for = "/feed.xml"
-  [headers.values]
-    Content-Type = "application/xml; charset=utf-8"
-    Cache-Control = "public, max-age=3600"
-
-[[headers]]
-  for = "/sitemap.xml"
-  [headers.values]
-    Content-Type = "application/xml; charset=utf-8"
-    Cache-Control = "public, max-age=86400"
-
-[[headers]]
-  for = "/robots.txt"
-  [headers.values]
-    Cache-Control = "public, max-age=86400"
+    Cache-Control = "public, max-age=0, must-revalidate"
