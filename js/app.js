@@ -1,6 +1,5 @@
 /**
  * Empório A.R. Beauty — Catálogo completo
- * Correção: Atacado global (se o carrinho tiver 6+ itens, todos os itens de varejo mudam para atacado).
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
@@ -18,12 +17,9 @@ function normId(s) { return String(s||'').toLowerCase().normalize('NFD').replace
 function productId(p) { return `${normId(p.brand)}-${normId(p.nome)}-${normId(p.volume)}`; }
 function displayName(nome) { return String(nome||'').replace(/\s*\|\s*Atacado\s*$/i,'').trim(); }
 
-// Correção principal: unitPrice agora aceita o total de itens do carrinho (globalQty)
 function unitPrice(p, itemQty, globalQty) {
   if (p.somenteAtacado) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
-  // Se o total global do carrinho for >= 6, aplica atacado para todos os itens de varejo
   if (globalQty >= 6) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
-  // Se a quantidade individual já atingiu 6, aplica atacado
   if (itemQty >= 6) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
   return { price: parsePrice(p.varejo), tipo: 'Varejo' };
 }
@@ -260,12 +256,10 @@ function clearCart() { cart = {}; saveCart(); renderCart(); }
 
 function cartTotals() {
   let subtotal=0, totalItems=0; const lines=[];
-  // Pega o total global do carrinho para a regra de atacado
   const globalQty = Object.values(cart).reduce((s,i)=>s+i.qty,0);
 
   for (const [id, item] of Object.entries(cart)) {
     const { product:p, qty } = item;
-    // Passa o globalQty para a função unitPrice
     const { price, tipo } = unitPrice(p, qty, globalQty);
     const lineTotal = price * qty;
     subtotal += lineTotal; totalItems += qty;
@@ -574,7 +568,6 @@ function openBuyModal(p) {
 function updateBuyPricePreview() {
   if (!buyProduct) return;
   const qty = parseInt(document.getElementById('buyQty')?.value||'1',10)||1;
-  // No modal de compra direta, o item é isolado, então a regra de atacado usa apenas a qty dele.
   const { price, tipo } = unitPrice(buyProduct, qty, qty);
   const el = document.getElementById('buyPricePreview');
   if (el) {
@@ -611,7 +604,6 @@ function renderCart() {
   const summary = document.getElementById('cartSummary');
   if (!list) return;
   
-  // ATUALIZA OS TOTAIS AQUI, O QUE REFLETE OS PREÇOS GLOBAIS
   const { subtotal, totalItems, lines } = cartTotals();
   
   if (!lines.length) {
@@ -782,11 +774,91 @@ function addAllFavoritesToCart() {
   if (added) { showToast(`${added} item(ns) adicionado(s) ao carrinho`); renderFavoritesList(); } else { showToast('Nenhum favorito disponível.'); }
 }
 
-function shareProduct(p) {
+// Compartilhar (com geração de imagem)
+async function shareProduct(p) {
   const url = new URL(window.location.href); url.searchParams.set('produto', productId(p)); url.hash = '';
   const text = `Confira *${displayName(p.nome)}* no Empório A.R. Beauty!\nVarejo: R$ ${p.varejo || '—'}\nAtacado: R$ ${p.atacado || '—'}\n\n${url.toString()}`;
-  if (navigator.share) { navigator.share({ title: displayName(p.nome), text: text, url: url.toString() }).catch(()=>{}); }
-  else { navigator.clipboard.writeText(text).then(()=>showToast('Link copiado!')).catch(()=>alert('Erro ao copiar.')); }
+  
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1080; canvas.height = 1920;
+    const ctx = canvas.getContext('2d');
+    
+    const grad = ctx.createLinearGradient(0, 0, 0, 1920);
+    grad.addColorStop(0, '#0f172a'); grad.addColorStop(0.5, '#14532d'); grad.addColorStop(1, '#052e16');
+    ctx.fillStyle = grad; ctx.fillRect(0, 0, 1080, 1920);
+    
+    ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 44px system-ui'; ctx.textAlign = 'center';
+    ctx.fillText('Empório A.R. Beauty', 540, 110);
+    
+    ctx.fillStyle = '#0c0a09'; ctx.fillRect(60, 150, 960, 1100);
+    
+    if (p.foto) {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try { 
+          const scale = Math.max(960 / img.width, 1100 / img.height);
+          const w = img.width * scale, h = img.height * scale;
+          ctx.drawImage(img, 60 + (960 - w)/2, 150 + (1100 - h)/2, w, h);
+        } catch(e){}
+      };
+      img.src = p.foto;
+    } else {
+      ctx.fillStyle = '#9ca3af'; ctx.font = '36px system-ui';
+      ctx.fillText('Foto indisponível', 540, 700);
+    }
+
+    setTimeout(() => {
+      ctx.fillStyle = '#fafaf9'; ctx.font = 'bold 46px system-ui';
+      const nomeTxt = displayName(p.nome);
+      const maxW = 900;
+      let words = nomeTxt.split(' '); let line = ''; let lines = [];
+      for (let w of words) {
+        let test = line ? line + ' ' + w : w;
+        if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else { line = test; }
+      }
+      if (line) lines.push(line);
+      lines.slice(0, 3).forEach((l, i) => ctx.fillText(l, 540, 1350 + i * 54));
+      
+      let ty = 1350 + Math.min(lines.length, 3) * 54 + 30;
+      ctx.fillStyle = '#d6d3d1'; ctx.font = '32px system-ui';
+      ctx.fillText(`${p.brand || ''} · ${p.volume || ''}`, 540, ty);
+      
+      ty += 60;
+      ctx.fillStyle = '#4ade80'; ctx.font = 'bold 52px system-ui';
+      if (p.varejo) ctx.fillText(`R$ ${p.varejo}`, 540, ty);
+      
+      if (p.atacado && p.atacado !== '—') {
+        ty += 55; ctx.fillStyle = '#86efac'; ctx.font = '36px system-ui';
+        ctx.fillText(`Atacado (6+) R$ ${p.atacado}`, 540, ty);
+      }
+      
+      ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = '28px system-ui';
+      ctx.fillText('Link na legenda · catalogoemporio.netlify.app', 540, 1850);
+
+      canvas.toBlob((blob) => {
+        if (!blob) { fallbackShare(text, url); return; }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `emporio-ar-${normId(p.nome)}-story.png`;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        alert('Imagem salva! Abra o Instagram ou WhatsApp, vá em Stories/Status e escolha esta imagem da galeria.');
+      }, 'image/png', 0.92);
+    }, 800);
+
+  } catch (e) {
+    fallbackShare(text, url);
+  }
+
+  function fallbackShare(text, url) {
+    if (navigator.share) {
+      navigator.share({ title: displayName(p.nome), text: text, url: url.toString() }).catch(()=>{});
+    } else {
+      navigator.clipboard.writeText(text).then(()=>showToast('Link copiado!')).catch(()=>alert('Erro ao copiar.'));
+    }
+  }
 }
 
 // CEP
@@ -911,6 +983,24 @@ function bindGlobalEvents() {
     window.addEventListener('scroll', () => { btnBackToTop.style.display = window.scrollY > 450 ? 'flex' : 'none'; }, { passive: true });
     btnBackToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
   }
+
+  // RESET DE FILTROS NA LOGO
+  document.querySelector('.brand')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    currentLine = 'all'; searchTerm = ''; filterDisp = 'all'; filterPreco = 'all'; filterMarca = 'all'; sortBy = 'default'; page = 1;
+    safeSet('emporio_filters', { line: 'all', search: '', marca: 'all' });
+    document.getElementById('searchInput').value = '';
+    document.getElementById('filterMarca').value = 'all';
+    document.getElementById('filterDisponivel').value = 'all';
+    document.getElementById('filterPreco').value = 'all';
+    document.getElementById('sortBy').value = 'default';
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector('.tab[data-line="all"]')?.classList.add('active');
+    document.getElementById('destaquesHost').style.display = '';
+    populateBrands();
+    renderProducts(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 // Iniciar
