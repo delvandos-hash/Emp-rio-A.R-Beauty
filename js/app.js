@@ -1,6 +1,8 @@
 /**
  * Empório A.R. Beauty — Catálogo completo
- * Melhorias aplicadas: favoritos (botão + modal), nome/CEP lembrados, múltiplas variações.
+ * Melhorias: favoritos (botão + modal + ordenação + add all),
+ * nome/CEP lembrados, múltiplas variações, botões +/- no carrinho,
+ * botão voltar ao topo e badge "já no carrinho" nos cards.
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
@@ -115,6 +117,7 @@ let filterPreco = 'all';
 let sortBy = 'default';
 let page = 1;
 const favorites = new Set(safeGet('fav_maquiagem', []));
+let favoritesSort = safeGet('fav_sort', 'added');
 let cart = safeGet('cart_maquiagem', {});
 const stockCache = new Map();
 let allProductsCache = null;
@@ -211,12 +214,50 @@ function sortProducts(list) {
 function saveCart() {
   safeSet('cart_maquiagem', cart);
   updateCartBadge();
+  // Atualiza cards visíveis (badge "já no carrinho")
+  refreshInCartBadges();
 }
 function updateCartBadge() {
   const total = Object.values(cart).reduce((s,i)=>s+i.qty,0);
   const badge = document.getElementById('cartBadge');
   if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'flex' : 'none'; }
 }
+function isProductInCart(p) {
+  const baseId = productId(p);
+  // Produto entra no carrinho se existir qualquer variação OU ele sem variação
+  if (cart[baseId]) return true;
+  for (const id of Object.keys(cart)) {
+    if (id === baseId || id.startsWith(baseId + '|')) return true;
+  }
+  return false;
+}
+
+/** Atualiza o botão do card e o badge "Já no carrinho" sem re-renderizar tudo */
+function refreshInCartBadges() {
+  document.querySelectorAll('.card').forEach(card => {
+    const id = card.dataset.id;
+    if (!id) return;
+    const p = findProduct(id);
+    if (!p) return;
+    const inCart = isProductInCart(p);
+    const btn = card.querySelector('[data-cart]');
+    if (btn) {
+      btn.classList.toggle('in-cart', inCart);
+      btn.textContent = inCart ? '✓ No carrinho' : 'Carrinho';
+    }
+    const existingBadge = card.querySelector('.badge-in-cart');
+    if (inCart && !existingBadge) {
+      const badge = document.createElement('span');
+      badge.className = 'badge-in-cart';
+      badge.textContent = 'NO CARRINHO';
+      const photo = card.querySelector('.photo');
+      if (photo) photo.appendChild(badge);
+    } else if (!inCart && existingBadge) {
+      existingBadge.remove();
+    }
+  });
+}
+
 function addToCart(p, qty=1) {
   const id = productId(p) + (p.variacaoSelecionada ? '|' + p.variacaoSelecionada.nome : '');
   if (cart[id]) cart[id].qty += qty; else cart[id] = { product: p, qty };
@@ -260,6 +301,7 @@ async function checkLiveStock(p) {
 function cardHtml(p) {
   const id = productId(p);
   const isFav = favorites.has(id);
+  const inCart = isProductInCart(p);
   const disponivel = (p.disponivel||'').toLowerCase()==='sim';
   const badge = (p.badge||'').toUpperCase();
   const nome = escapeHtml(displayName(p.nome));
@@ -273,13 +315,16 @@ function cardHtml(p) {
   else if (badge.includes('OFERTA')) badgeHtml = '<span class="badge-novo" style="background:#ea580c">OFERTA</span>';
   else if (badge.includes('NOVO')) badgeHtml = '<span class="badge-novo">NOVO</span>';
   if (!disponivel) badgeHtml += '<span class="badge-esgotado">ESGOTADO</span>';
+  const cartBadgeHtml = inCart ? '<span class="badge-in-cart">NO CARRINHO</span>' : '';
   const prices = p.somenteAtacado
     ? `<div><span class="price-label">Atacado</span><span class="price-a">R$ ${escapeHtml(p.atacado)}</span></div>`
     : `<div><span class="price-label">Varejo</span><span class="price-v">R$ ${escapeHtml(p.varejo)}</span></div>
        <div><span class="price-label">Atacado (6+)</span><span class="price-a">R$ ${escapeHtml(p.atacado)}</span></div>`;
+  const cartBtnLabel = inCart ? '✓ No carrinho' : 'Carrinho';
+  const cartBtnClass = inCart ? 'btn-sm btn-cart in-cart' : 'btn-sm btn-cart';
   return `<article class="card" data-id="${eid}">
     <button class="fav ${isFav?'active':''}" data-fav="${eid}" aria-label="Favoritar" aria-pressed="${isFav?'true':'false'}">♥</button>
-    <div class="photo" data-open="${eid}">${badgeHtml}
+    <div class="photo" data-open="${eid}">${badgeHtml}${cartBadgeHtml}
       <img src="${foto}" alt="${nome}" width="72" height="72" loading="lazy" data-fallback="https://via.placeholder.com/150?text=Sem+foto"/>
     </div>
     <div class="info">
@@ -288,7 +333,7 @@ function cardHtml(p) {
       <div class="prices">${prices}</div>
       <div class="card-actions">
         <button class="btn-sm btn-details" data-details="${eid}">Detalhes</button>
-        <button class="btn-sm btn-cart" data-cart="${eid}">Carrinho</button>
+        <button class="${cartBtnClass}" data-cart="${eid}">${cartBtnLabel}</button>
         <button class="btn-sm btn-buy" data-buy="${eid}">Comprar</button>
       </div>
     </div>
@@ -420,14 +465,10 @@ function bindVariacaoSelector(p) {
       if (selected.size) { hint.textContent = `${selected.size} opção(ões) selecionada(s)`; hint.classList.add('ok'); }
       else { hint.textContent = 'Selecione uma ou mais opções disponíveis'; hint.classList.remove('ok'); }
     }
-    // Compatibilidade com o fluxo de compra direta (1 variação)
     if (selected.size === 1) {
       const id = [...selected][0];
       const chip = box.querySelector(`[data-var-id="${CSS.escape(id)}"]`);
-      p.variacaoSelecionada = chip ? {
-        id,
-        nome: chip.getAttribute('data-var-nome') || ''
-      } : null;
+      p.variacaoSelecionada = chip ? { id, nome: chip.getAttribute('data-var-nome') || '' } : null;
     } else {
       p.variacaoSelecionada = null;
     }
@@ -449,10 +490,7 @@ function bindVariacaoSelector(p) {
     selected.forEach(id => {
       const v = vars.find(x => String(x.id || x.nome) === id);
       if (!v) return;
-      const clone = {
-        ...p,
-        variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || '') }
-      };
+      const clone = { ...p, variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || '') } };
       addToCart(clone, 1);
       added++;
     });
@@ -647,6 +685,7 @@ function confirmBuy() {
   closeModal('buyModal');
 }
 
+// ===== Carrinho (painel) =====
 function renderCart() {
   const list = document.getElementById('cartList');
   const summary = document.getElementById('cartSummary');
@@ -657,26 +696,71 @@ function renderCart() {
     if (summary) summary.innerHTML = '';
     return;
   }
-  list.innerHTML = lines.map(({id,p,qty,price,tipo,lineTotal}) => {
-    let varHtml = p.variacaoSelecionada ? `<br><span style="font-size:0.75rem;color:#6b7280">Opção: ${escapeHtml(p.variacaoSelecionada.nome)}</span>` : '';
+
+  const resumoHtml = `
+    <div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:.75rem .9rem;margin-bottom:.75rem;color:#065f46">
+      <div style="font-size:.78rem;font-weight:600;opacity:.8">Resumo do pedido</div>
+      <div style="font-size:1rem;font-weight:800;margin-top:.15rem">Itens: ${totalItems} · Total: R$ ${formatPrice(subtotal)}</div>
+    </div>`;
+
+  const temAtacado = lines.some(l => l.tipo === 'Atacado');
+  const avisoHtml = temAtacado
+    ? `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado (6+ itens)</div>`
+    : '';
+
+  const itemsHtml = lines.map(({id,p,qty,price,tipo,lineTotal}) => {
+    let varHtml = p.variacaoSelecionada
+      ? `<br><span style="font-size:0.75rem;color:#6b7280">Opção: ${escapeHtml(p.variacaoSelecionada.nome)}</span>`
+      : '';
     return `
     <div class="cart-item">
       <img src="${escapeHtml(p.foto||'')}" alt="" width="52" height="52" data-fallback="https://via.placeholder.com/52?text=?"/>
       <div class="cart-item-info">
         <div class="cart-item-name">${escapeHtml(displayName(p.nome))}</div>
-        <div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(tipo)}${varHtml}</div>
-        <div class="cart-item-price">R$ ${formatPrice(price)} × <input type="number" min="1" value="${qty}" data-qty="${escapeHtml(id)}" class="cart-qty"/> = <strong>R$ ${formatPrice(lineTotal)}</strong></div>
+        <div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(p.volume||'')} · ${escapeHtml(tipo)}: R$ ${formatPrice(price)}${varHtml}</div>
+        <div class="cart-qty-controls">
+          <button type="button" class="cart-qty-btn" data-qty-minus="${escapeHtml(id)}" aria-label="Diminuir">−</button>
+          <span class="cart-qty-value">${qty}</span>
+          <button type="button" class="cart-qty-btn" data-qty-plus="${escapeHtml(id)}" aria-label="Aumentar">+</button>
+        </div>
+        <div style="font-size:.78rem;margin-top:.35rem;font-weight:600">Subtotal: R$ ${formatPrice(lineTotal)}</div>
       </div>
-      <button class="cart-remove" data-remove="${escapeHtml(id)}" aria-label="Remover">✕</button>
+      <button class="cart-remove" data-remove="${escapeHtml(id)}" aria-label="Remover">Remover</button>
     </div>`;
   }).join('');
+
+  list.innerHTML = resumoHtml + avisoHtml + itemsHtml;
+
   if (summary) {
     summary.innerHTML = `<div class="cart-total"><span>${totalItems} item(ns)</span><strong>Total: R$ ${formatPrice(subtotal)}</strong></div>
       <div class="cart-actions"><button type="button" class="btn-outline" id="btnClearCart">Limpar pedido</button>
       <button type="button" class="btn-wa" id="btnCheckout">Finalizar no WhatsApp</button></div>`;
   }
+
   list.querySelectorAll('[data-remove]').forEach(b=>b.addEventListener('click',()=>removeFromCart(b.dataset.remove)));
-  list.querySelectorAll('[data-qty]').forEach(i=>i.addEventListener('change',()=>setCartQty(i.dataset.qty,i.value)));
+
+  list.querySelectorAll('[data-qty-minus]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.qtyMinus;
+      const item = cart[id];
+      if (!item) return;
+      if (item.qty <= 1) {
+        if (confirm('Remover este item do carrinho?')) removeFromCart(id);
+        return;
+      }
+      setCartQty(id, item.qty - 1);
+    });
+  });
+
+  list.querySelectorAll('[data-qty-plus]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.qtyPlus;
+      const item = cart[id];
+      if (!item) return;
+      setCartQty(id, item.qty + 1);
+    });
+  });
+
   document.getElementById('btnClearCart')?.addEventListener('click',()=>{ if(confirm('Limpar todo o pedido?')) clearCart(); });
   document.getElementById('btnCheckout')?.addEventListener('click', openCartCheckout);
 }
@@ -763,10 +847,11 @@ function showToast(msg) {
 // ===== Favoritos =====
 function updateFavBadge() {
   const badge = document.getElementById('favBadge');
-  if (!badge) return;
-  const n = favorites.size;
-  badge.textContent = n;
-  badge.style.display = n > 0 ? 'flex' : 'none';
+  if (badge) {
+    const n = favorites.size;
+    badge.textContent = n;
+    badge.style.display = n > 0 ? 'flex' : 'none';
+  }
 }
 
 function openFavoritesModal() {
@@ -774,20 +859,55 @@ function openFavoritesModal() {
   openModal('favoritesModal');
 }
 
+function sortFavoriteProducts(list) {
+  const arr = list.slice();
+  if (favoritesSort === 'name-asc') arr.sort((a,b)=>displayName(a.nome).localeCompare(displayName(b.nome),'pt-BR'));
+  else if (favoritesSort === 'name-desc') arr.sort((a,b)=>displayName(b.nome).localeCompare(displayName(a.nome),'pt-BR'));
+  else if (favoritesSort === 'price-asc') arr.sort((a,b)=>parsePrice(a.somenteAtacado?a.atacado:a.varejo)-parsePrice(b.somenteAtacado?b.atacado:b.varejo));
+  else if (favoritesSort === 'price-desc') arr.sort((a,b)=>parsePrice(b.somenteAtacado?b.atacado:b.varejo)-parsePrice(a.somenteAtacado?a.atacado:a.varejo));
+  return arr;
+}
+
 function renderFavoritesList() {
   const list = document.getElementById('favoritesList');
+  const toolbar = document.getElementById('favoritesToolbar');
+  const countLabel = document.getElementById('favoritesCountLabel');
+  const addAllBtn = document.getElementById('btnAddAllFav');
+  const titleEl = document.getElementById('favoritesTitle');
   if (!list) return;
+
+  // Título com contador
+  if (titleEl) {
+    titleEl.textContent = favorites.size
+      ? `♥ Meus Favoritos (${favorites.size})`
+      : '♥ Meus Favoritos';
+  }
+
   const ids = [...favorites];
   if (!ids.length) {
     list.innerHTML = '<p class="cart-empty">Nenhum produto favoritado ainda.<br><small>Toque no ♥ de qualquer produto para salvar.</small></p>';
+    if (toolbar) toolbar.style.display = 'none';
+    if (addAllBtn) addAllBtn.style.display = 'none';
     return;
   }
   const products = ids.map(id => findProduct(id)).filter(Boolean);
   if (!products.length) {
     list.innerHTML = '<p class="cart-empty">Nenhum produto favoritado ainda.</p>';
+    if (toolbar) toolbar.style.display = 'none';
+    if (addAllBtn) addAllBtn.style.display = 'none';
     return;
   }
-  list.innerHTML = products.map(p => {
+
+  // Toolbar visível
+  if (toolbar) toolbar.style.display = 'flex';
+  if (countLabel) countLabel.textContent = `${products.length} item(ns)`;
+  if (addAllBtn) addAllBtn.style.display = '';
+  const sortSelect = document.getElementById('favoritesSort');
+  if (sortSelect) sortSelect.value = favoritesSort;
+
+  const sorted = sortFavoriteProducts(products);
+
+  list.innerHTML = sorted.map(p => {
     const id = productId(p);
     const foto = escapeHtml(p.foto || (p.fotos && p.fotos[0]) || '');
     const disp = (p.disponivel||'').toLowerCase()==='sim';
@@ -800,7 +920,7 @@ function renderFavoritesList() {
         <div class="cart-item-name">${escapeHtml(displayName(p.nome))}</div>
         <div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(p.volume||'')} ${disp?'':' · <span class="stock-out">Esgotado</span>'}</div>
         <div class="cart-item-price">${priceHtml}</div>
-        <div style="display:flex;gap:.35rem;margin-top:.35rem">
+        <div style="display:flex;gap:.35rem;margin-top:.35rem;flex-wrap:wrap">
           <button type="button" class="btn-sm btn-details" data-fav-open="${escapeHtml(id)}">Detalhes</button>
           <button type="button" class="btn-sm btn-cart" data-fav-addcart="${escapeHtml(id)}">Carrinho</button>
           <button type="button" class="btn-sm" style="background:#fee2e2;color:#b91c1c" data-fav-remove="${escapeHtml(id)}">Remover</button>
@@ -833,6 +953,35 @@ function renderFavoritesList() {
       renderFavoritesList();
     });
   });
+}
+
+function addAllFavoritesToCart() {
+  const ids = [...favorites];
+  if (!ids.length) return;
+  let added = 0;
+  ids.forEach(id => {
+    const p = findProduct(id);
+    if (!p) return;
+    if ((p.disponivel||'').toLowerCase() !== 'sim') return; // pula esgotados
+    // Se tiver variações, não dá para saber qual — usa a primeira disponível
+    if (Array.isArray(p.variacoes) && p.variacoes.length) {
+      const v = p.variacoes.find(x => x.estoque === undefined || Number(x.estoque) > 0);
+      if (v) {
+        const clone = { ...p, variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || '') } };
+        addToCart(clone, 1);
+        added++;
+      }
+    } else {
+      addToCart(p, 1);
+      added++;
+    }
+  });
+  if (added) {
+    showToast(`${added} item(ns) adicionado(s) ao carrinho`);
+    renderFavoritesList();
+  } else {
+    showToast('Nenhum favorito disponível para adicionar.');
+  }
 }
 
 function initSwipeDetails() {
@@ -899,6 +1048,16 @@ document.getElementById('buyQty')?.addEventListener('input', updateBuyPricePrevi
 document.getElementById('btnConfirmBuy')?.addEventListener('click', confirmBuy);
 document.getElementById('btnConfirmCheckout')?.addEventListener('click', confirmCartCheckout);
 document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => closeModal(el.dataset.close)));
+
+// Ordenação de favoritos
+document.getElementById('favoritesSort')?.addEventListener('change', e => {
+  favoritesSort = e.target.value || 'added';
+  safeSet('fav_sort', favoritesSort);
+  renderFavoritesList();
+});
+// Adicionar todos os favoritos
+document.getElementById('btnAddAllFav')?.addEventListener('click', addAllFavoritesToCart);
+
 document.getElementById('fabWhatsApp')?.addEventListener('click', () => {
   if (cartTotals().lines.length) { openCart(); return; }
   window.open(`https://wa.me/${WHATSAPP}?text=${encodeURIComponent('Olá! Vim pelo catálogo Empório A.R. Beauty e gostaria de atendimento.')}`,'_blank');
@@ -933,6 +1092,20 @@ function openProductFromUrl() {
     const p = findProduct(id);
     if (p) openDetails(p);
   } catch(_){}
+}
+
+// ===== Voltar ao topo =====
+const btnBackToTop = document.getElementById('btnBackToTop');
+if (btnBackToTop) {
+  const onScrollTop = () => {
+    if (window.scrollY > 450) btnBackToTop.style.display = 'flex';
+    else btnBackToTop.style.display = 'none';
+  };
+  window.addEventListener('scroll', onScrollTop, { passive: true });
+  btnBackToTop.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  onScrollTop();
 }
 
 updateCartBadge();
