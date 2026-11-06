@@ -5,17 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
   <meta name="theme-color" content="#1a1a1a" />
   <title>Empório A.R. Beauty | Catálogo de Maquiagem</title>
-  <meta name="description" content="Catálogo online de maquiagens e cosméticos. Preços de varejo e atacado. Pedido pelo WhatsApp." />
+  <meta name="description" id="metaDescription" content="Catálogo online de maquiagens e cosméticos. Preços de varejo e atacado. Pedido pelo WhatsApp." />
   <meta name="robots" content="index, follow" />
-  <link rel="canonical" href="https://emporioar-beauty.netlify.app/" />
+  <link rel="canonical" id="canonicalLink" href="https://emporioar-beauty.netlify.app/" />
+
+  <!-- Analytics Leve (Plausible) - Substitua pelo seu domínio se necessário -->
+  <script defer data-domain="emporioar-beauty.netlify.app" src="https://plausible.io/js/script.js"></script>
 
   <meta property="og:type" content="website" />
   <meta property="og:locale" content="pt_BR" />
   <meta property="og:site_name" content="Empório A.R. Beauty" />
-  <meta property="og:title" content="Empório A.R. Beauty | Catálogo de Maquiagem" />
-  <meta property="og:description" content="Maquiagens com preço de varejo e atacado. Peça pelo WhatsApp." />
-  <meta property="og:url" content="https://emporioar-beauty.netlify.app/" />
-  <meta property="og:image" content="https://emporioar-beauty.netlify.app/assets/logo.jpg" />
+  <meta property="og:title" id="ogTitle" content="Empório A.R. Beauty | Catálogo de Maquiagem" />
+  <meta property="og:description" id="ogDescription" content="Maquiagens com preço de varejo e atacado. Peça pelo WhatsApp." />
+  <meta property="og:url" id="ogUrl" content="https://emporioar-beauty.netlify.app/" />
+  <meta property="og:image" id="ogImage" content="https://emporioar-beauty.netlify.app/assets/logo.jpg" />
 
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png" />
@@ -33,21 +36,28 @@
     .tabs { display: flex; gap: .4rem; flex-wrap: wrap; }
     .tab { border: none; background: rgba(255,255,255,.1); color: #fff; padding: .5rem .9rem; border-radius: 999px; cursor: pointer; font-size: .8rem; font-weight: 600; transition: all .2s; }
     .tab:hover, .tab.active { background: var(--primary); }
+    
     .toolbar { max-width: 1180px; margin: 1rem auto 0; padding: 0 1rem; display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
     .search { flex: 1; min-width: 180px; position: relative; }
     .search input { width: 100%; padding: .65rem 1rem .65rem 2.4rem; border: 1px solid var(--border); border-radius: 12px; font-size: .9rem; outline: none; background: #fff; }
     .search::before { content: "🔍"; position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); opacity: .5; }
-    .filter-select { padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: #fff; font-size: .82rem; min-width: 140px; }
+    .filter-select { padding: .65rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: #fff; font-size: .82rem; min-width: 130px; }
+    
     main { max-width: 1180px; margin: 1rem auto 4rem; padding: 0 1rem; }
-
     .products { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .75rem; }
     .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem; display: flex; gap: .8rem; position: relative; transition: box-shadow .2s, transform .15s; }
     .card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
     .photo { width: 72px; height: 72px; border-radius: 10px; background: #f3f4f6; flex-shrink: 0; overflow: hidden; position: relative; cursor: pointer; }
     .photo img { width: 100%; height: 100%; object-fit: cover; }
-    .badge-novo, .badge-esgotado { position: absolute; top: 4px; left: 4px; font-size: .58rem; font-weight: 700; padding: 2px 5px; border-radius: 4px; color: #fff; z-index: 2; }
+    
+    .badge-novo, .badge-esgotado, .badge-low-stock { position: absolute; top: 4px; left: 4px; font-size: .58rem; font-weight: 700; padding: 2px 5px; border-radius: 4px; color: #fff; z-index: 2; }
     .badge-novo { background: #059669; }
     .badge-esgotado { background: #dc2626; }
+    .badge-low-stock { background: #f59e0b; top: 4px; left: auto; right: 4px; }
+    
+    .card-actions .btn-share { background: #f3f4f6; color: #111; display: inline-flex; align-items: center; gap: .2rem; }
+    .card-actions .btn-share:hover { background: #e5e7eb; }
+
     .fav { position: absolute; top: 8px; right: 8px; background: none; border: none; font-size: 1.1rem; cursor: pointer; opacity: .7; z-index: 3; }
     .fav.active { opacity: 1; color: #e11d48; }
     .info { flex: 1; min-width: 0; }
@@ -64,30 +74,31 @@
     .btn-cart.in-cart { background: #bbf7d0; color: #166534; }
     .btn-buy { background: var(--wa); color: #fff; }
 
-    .badge-in-cart {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      background: #16a34a;
-      color: #fff;
-      font-size: .58rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      letter-spacing: .02em;
-      z-index: 3;
-      box-shadow: 0 1px 4px rgba(0,0,0,.15);
-    }
+    .badge-in-cart { position: absolute; top: 8px; left: 8px; background: #16a34a; color: #fff; font-size: .58rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; letter-spacing: .02em; z-index: 3; box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+
+    /* Skeletons */
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    .skeleton-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: .85rem; display: flex; gap: .8rem; }
+    .skeleton-photo { width: 72px; height: 72px; border-radius: 10px; background: #e5e7eb; animation: pulse 1.5s infinite; flex-shrink: 0; }
+    .skeleton-lines { flex: 1; display: flex; flex-direction: column; gap: .4rem; justify-content: center; }
+    .skeleton-line { height: 12px; background: #e5e7eb; border-radius: 4px; animation: pulse 1.5s infinite; }
+    .skeleton-line.w-60 { width: 60%; }
+    .skeleton-line.w-40 { width: 40%; }
+    .skeleton-line.w-80 { width: 80%; }
 
     .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
-    footer { text-align: center; padding: 1.5rem 1rem; font-size: .72rem; color: var(--muted); border-top: 1px solid var(--border); background: #fff; }
-    #bootStatus { text-align: center; padding: 2rem; color: var(--muted); }
+    footer { text-align: center; padding: 1.5rem 1rem; font-size: .72rem; color: var(--muted); border-top: 1px solid var(--border); background: #fff; margin-bottom: 60px; }
+    
     @media (prefers-color-scheme: dark) {
       :root { --text: #e5e7eb; --muted: #9ca3af; --border: #374151; --card: #1f2937; --bg: #111827; }
       body { background: var(--bg); color: var(--text); }
       .search input, .filter-select { background: #1f2937; color: var(--text); border-color: var(--border); }
       .btn-details { background: #374151; color: #e5e7eb; }
+      .skeleton-photo, .skeleton-line { background: #374151; }
+      .card-actions .btn-share { background: #374151; color: #e5e7eb; }
+      .card-actions .btn-share:hover { background: #4b5563; }
     }
+
     .btn-cart-header { position: relative; background: rgba(255,255,255,.15); border: none; color: #fff; width: 44px; height: 44px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     #cartBadge { position: absolute; top: -4px; right: -4px; background: var(--wa); color: #fff; font-size: .65rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 999px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
     #favBadge { position: absolute; top: -4px; right: -4px; background: #e11d48; color: #fff; font-size: .65rem; font-weight: 700; min-width: 18px; height: 18px; border-radius: 999px; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
@@ -121,15 +132,16 @@
     .cart-qty-btn { width: 34px; height: 34px; border: 1px solid var(--border); background: #f9fafb; border-radius: 8px; font-size: 1.15rem; font-weight: 700; line-height: 1; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .1s; }
     .cart-qty-btn:hover { background: #e5e7eb; }
     .cart-qty-btn:active { transform: scale(.95); }
-    .cart-qty-btn:disabled { opacity: .4; cursor: not-allowed; }
     .cart-qty-value { min-width: 28px; text-align: center; font-weight: 700; font-size: .95rem; color: var(--text); }
 
     #cartSummary { padding: 0.8rem 1rem; border-top: 1px solid var(--border); background: var(--card); }
     .cart-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: .95rem; }
-    .cart-actions { display: flex; gap: 0.5rem; margin-bottom: 0; padding-bottom: 0; }
+    .cart-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0; padding-bottom: 0; }
     .btn-outline { flex: 1; padding: 0.65rem; border: 1px solid var(--border); border-radius: 10px; background: #fff; font-weight: 600; font-size: .82rem; cursor: pointer; }
     .btn-wa { flex: 1.4; padding: 0.65rem; border: none; border-radius: 10px; background: var(--wa); color: #fff; font-weight: 700; font-size: .82rem; cursor: pointer; }
     .btn-wa:hover { background: var(--wa-dark); }
+    .btn-quote { flex: 1 1 100%; padding: 0.65rem; border: none; border-radius: 10px; background: #6366f1; color: #fff; font-weight: 700; font-size: .82rem; cursor: pointer; margin-top: 0.25rem; }
+    .btn-quote:hover { background: #4f46e5; }
 
     .modal { position: fixed; inset: 0; z-index: 500; display: flex; align-items: flex-end; justify-content: center; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .22s; }
     .modal.open { opacity: 1; pointer-events: auto; }
@@ -187,47 +199,26 @@
 
     .fab-wa { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--wa); color: #fff; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(0,0,0,.3); z-index: 300; text-decoration: none; }
 
-    .back-to-top {
-      position: fixed;
-      bottom: 5.5rem;
-      right: 1.5rem;
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      border: none;
-      background: #0f172a;
-      color: #fff;
-      font-size: 1.3rem;
-      font-weight: 700;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0,0,0,.3);
-      z-index: 350;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      transition: opacity .25s ease, transform .2s ease;
-    }
+    /* Barra Fixa Mobile */
+    .mobile-cart-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #1e293b; color: #fff; padding: 0.8rem 1rem; z-index: 450; justify-content: space-between; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,.1); }
+    .mobile-cart-bar.show { display: flex; }
+    .mobile-cart-bar .bar-info { font-weight: 600; font-size: 0.9rem; }
+    .mobile-cart-bar .bar-btn { background: var(--wa); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 700; cursor: pointer; }
+    @media (min-width: 768px) { .mobile-cart-bar { display: none !important; } }
+
+    /* PWA Banner */
+    .pwa-banner { display: none; position: fixed; top: 0; left: 0; right: 0; background: #fff; color: #111; padding: 0.7rem 1rem; z-index: 5000; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,.15); border-bottom: 2px solid var(--primary); }
+    .pwa-banner.show { display: flex; }
+    .pwa-banner span { font-size: 0.85rem; font-weight: 600; }
+    .pwa-banner button { background: var(--primary); color: #fff; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 700; cursor: pointer; }
+    .pwa-banner .close-pwa { background: transparent; color: #666; margin-left: 10px; }
+
+    .back-to-top { position: fixed; bottom: 5.5rem; right: 1.5rem; width: 48px; height: 48px; border-radius: 50%; border: none; background: #0f172a; color: #fff; font-size: 1.3rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.3); z-index: 350; display: none; align-items: center; justify-content: center; transition: opacity .25s ease, transform .2s ease; }
     .back-to-top:hover { background: #1e293b; }
     .back-to-top:active { transform: scale(.95); }
-    @media (prefers-color-scheme: dark) {
-      .back-to-top { background: #f8fafc; color: #0f172a; }
-      .back-to-top:hover { background: #e2e8f0; }
-    }
+    @media (prefers-color-scheme: dark) { .back-to-top { background: #f8fafc; color: #0f172a; } .back-to-top:hover { background: #e2e8f0; } }
 
-    #netlify-badge, .netlify-badge, [data-netlify-site-id],
-    #nf-banner, .nf-banner, iframe[src*="netlify"],
-    a[href*="netlify.com"][target="_blank"],
-    #netlify-drawer, .netlify-drawer,
-    body > div[id*="netlify" i], body > a[href*="netlify"],
-    div[style*="position: fixed"][style*="bottom"] {
-      display: none !important;
-      opacity: 0 !important;
-      visibility: hidden !important;
-      pointer-events: none !important;
-      width: 0 !important;
-      height: 0 !important;
-      z-index: -9999 !important;
-    }
+    #netlify-badge, .netlify-badge, [data-netlify-site-id], #nf-banner, .nf-banner, iframe[src*="netlify"], a[href*="netlify.com"][target="_blank"], #netlify-drawer, .netlify-drawer, body > div[id*="netlify" i], body > a[href*="netlify"], div[style*="position: fixed"][style*="bottom"] { display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; width: 0 !important; height: 0 !important; z-index: -9999 !important; }
 
     .variacoes-box { margin-top: 0.75rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
     .variacoes-box strong { display: block; margin-bottom: 0.45rem; color: var(--text); font-size: 0.9rem; }
@@ -239,70 +230,22 @@
     .var-chip-out { opacity: .45; cursor: not-allowed; }
     .var-hint { font-size: .78rem; color: var(--muted); margin: .4rem 0 0; }
     .var-hint.ok { color: #059669; font-weight: 600; }
-    .btn-add-multi {
-      display: block;
-      width: 100%;
-      padding: .6rem;
-      margin-top: .5rem;
-      border: none;
-      border-radius: 10px;
-      background: var(--wa);
-      color: #fff;
-      font-weight: 700;
-      font-size: .85rem;
-      cursor: pointer;
-    }
+    .btn-add-multi { display: block; width: 100%; padding: .6rem; margin-top: .5rem; border: none; border-radius: 10px; background: var(--wa); color: #fff; font-weight: 700; font-size: .85rem; cursor: pointer; }
     .btn-add-multi:hover { background: var(--wa-dark); }
     .btn-add-multi:active { transform: scale(.98); }
-
-    @media (prefers-color-scheme: dark) {
-      .var-chip { background: #374151; border-color: #4b5563; }
-      .var-chip.selected { border-color: var(--primary); background: rgba(107,45,91,0.3); }
-    }
+    @media (prefers-color-scheme: dark) { .var-chip { background: #374151; border-color: #4b5563; } .var-chip.selected { border-color: var(--primary); background: rgba(107,45,91,0.3); } }
 
     .load-more-wrap { display: flex; justify-content: center; padding: 1rem 0 2rem; }
     .btn-load-more { background: #111; color: #fff; border: none; padding: .75rem 1.4rem; border-radius: 999px; font-size: .88rem; font-weight: 600; cursor: pointer; }
     .btn-load-more:hover { background: #333; }
 
-    .fav-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: .5rem;
-      margin-bottom: .75rem;
-      flex-wrap: wrap;
-    }
-    .fav-toolbar .fav-count {
-      font-size: .85rem;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .fav-toolbar .fav-sort {
-      padding: .5rem .65rem;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      background: #fff;
-      font-size: .8rem;
-      cursor: pointer;
-    }
-    .btn-add-all-fav {
-      width: 100%;
-      margin: .25rem 0 .85rem;
-      padding: .7rem;
-      border: none;
-      border-radius: 12px;
-      background: var(--wa);
-      color: #fff;
-      font-weight: 700;
-      font-size: .85rem;
-      cursor: pointer;
-    }
+    .fav-toolbar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; flex-wrap: wrap; }
+    .fav-toolbar .fav-count { font-size: .85rem; color: var(--muted); font-weight: 600; }
+    .fav-toolbar .fav-sort { padding: .5rem .65rem; border: 1px solid var(--border); border-radius: 10px; background: #fff; font-size: .8rem; cursor: pointer; }
+    .btn-add-all-fav { width: 100%; margin: .25rem 0 .85rem; padding: .7rem; border: none; border-radius: 12px; background: var(--wa); color: #fff; font-weight: 700; font-size: .85rem; cursor: pointer; }
     .btn-add-all-fav:hover { background: var(--wa-dark); }
     .btn-add-all-fav:active { transform: scale(.98); }
-
-    @media (prefers-color-scheme: dark) {
-      .fav-toolbar .fav-sort { background: #111827; color: var(--text); border-color: #374151; }
-    }
+    @media (prefers-color-scheme: dark) { .fav-toolbar .fav-sort { background: #111827; color: var(--text); border-color: #374151; } }
   </style>
   <script type="application/ld+json">
   {
@@ -314,12 +257,7 @@
     "logo": "https://emporioar-beauty.netlify.app/assets/logo.jpg",
     "image": "https://emporioar-beauty.netlify.app/assets/logo.jpg",
     "telephone": "+55-62-99113-4488",
-    "address": {
-      "@type": "PostalAddress",
-      "addressCountry": "BR",
-      "addressRegion": "GO",
-      "addressLocality": "Goiânia"
-    },
+    "address": { "@type": "PostalAddress", "addressCountry": "BR", "addressRegion": "GO", "addressLocality": "Goiânia" },
     "priceRange": "$$",
     "currenciesAccepted": "BRL",
     "paymentAccepted": "Cash, Credit Card, PIX",
@@ -328,6 +266,15 @@
   </script>
 </head>
 <body>
+  <!-- PWA Install Banner -->
+  <div id="pwaBanner" class="pwa-banner">
+    <span>Instale nosso catálogo para acesso rápido!</span>
+    <div>
+      <button type="button" id="pwaInstallBtn">Instalar</button>
+      <button type="button" class="close-pwa" id="pwaCloseBtn">✕</button>
+    </div>
+  </div>
+
   <header>
     <a href="/" class="brand">
       <img src="assets/logo.jpg" alt="Logo" data-fallback="" />
@@ -360,6 +307,10 @@
     <div class="search">
       <input type="search" id="searchInput" placeholder="Buscar por nome ou marca..." autocomplete="off" />
     </div>
+    <select class="filter-select" id="filterMarca">
+      <option value="all">Todas as marcas</option>
+      <!-- Preenchido via JS -->
+    </select>
     <select class="filter-select" id="filterDisponivel">
       <option value="all">Todos</option>
       <option value="sim">Só disponíveis</option>
@@ -384,7 +335,15 @@
 
   <main>
     <div id="destaquesHost"></div>
-    <div id="bootStatus">Carregando catálogo…</div>
+    <div id="bootStatus" class="products" style="display:none;"></div>
+    
+    <!-- Fallback de erro -->
+    <div id="errorFallback" class="empty" style="display:none; background: #fee2e2; color: #b91c1c; border-radius: 12px; margin-top: 1rem;">
+      <strong>Não foi possível carregar o catálogo.</strong>
+      <p>Verifique sua conexão ou tente novamente mais tarde.</p>
+      <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; border-radius: 8px; border: none; background: #b91c1c; color: #fff; font-weight: bold; cursor: pointer;">Tentar Novamente</button>
+    </div>
+
     <div id="products" class="products" style="display:none;"></div>
     <div id="empty" class="empty" style="display:none;">
       <strong>Nenhum produto encontrado</strong>
@@ -410,6 +369,12 @@
     <div id="cartSummary"></div>
   </aside>
 
+  <!-- Barra Fixa Mobile -->
+  <div id="mobileCartBar" class="mobile-cart-bar">
+    <div class="bar-info"><span id="mobileCartCount">0</span> itens · R$ <span id="mobileCartTotal">0,00</span></div>
+    <button type="button" class="bar-btn" onclick="document.getElementById('btnOpenCart').click()">Ver carrinho</button>
+  </div>
+
   <div class="modal" id="buyModal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Comprar">
     <div class="modal-box">
       <div class="modal-header">
@@ -430,6 +395,7 @@
       <div class="form-group">
         <label for="buyCep">CEP</label>
         <input type="text" id="buyCep" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" />
+        <span id="cepStatus" style="font-size: 0.75rem; color: var(--muted); margin-top: 4px; display: block;"></span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-outline" data-close="buyModal">Cancelar</button>
@@ -452,6 +418,7 @@
       <div class="form-group">
         <label for="checkoutCep">CEP</label>
         <input type="text" id="checkoutCep" placeholder="00000-000" inputmode="numeric" autocomplete="postal-code" maxlength="9" />
+        <span id="checkoutCepStatus" style="font-size: 0.75rem; color: var(--muted); margin-top: 4px; display: block;"></span>
       </div>
       <div class="modal-actions">
         <button type="button" class="btn-outline" data-close="checkoutModal">Voltar</button>
@@ -495,9 +462,7 @@
 
   <a href="#" id="fabWhatsApp" class="fab-wa" aria-label="WhatsApp">💬</a>
 
-  <button type="button" id="btnBackToTop" class="back-to-top" aria-label="Voltar ao topo" title="Voltar ao topo">
-    ↑
-  </button>
+  <button type="button" id="btnBackToTop" class="back-to-top" aria-label="Voltar ao topo" title="Voltar ao topo">↑</button>
 
   <script type="module" src="js/app.js"></script>
 </body>
