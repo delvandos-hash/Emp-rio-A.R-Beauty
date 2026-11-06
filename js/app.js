@@ -918,53 +918,73 @@ function setupCepAutoFill(inputId, nameId, statusId) {
   if (!input) return;
   let lastCep = '';
   let timer = null;
+  let inflight = 0;
+
+  const setStatus = (msg) => {
+    const status = document.getElementById(statusId);
+    if (status) status.textContent = msg || '';
+  };
 
   const lookup = async () => {
     const raw = input.value || '';
-    const cep = raw.replace(/\D/g, '');
-    // máscara leve 00000-000
-    if (cep.length > 5) {
-      const masked = cep.slice(0, 5) + '-' + cep.slice(5, 8);
-      if (raw.replace(/\D/g, '') === cep && raw !== masked && cep.length <= 8) {
-        const sel = input.selectionStart;
+    let cep = raw.replace(/\D/g, '');
+    // máscara 00000-000
+    if (cep.length >= 5) {
+      const masked = cep.slice(0, 5) + (cep.length > 5 ? '-' + cep.slice(5, 8) : '');
+      if (raw !== masked && cep.length <= 8) {
         input.value = masked;
       }
     }
+    cep = (input.value || '').replace(/\D/g, '');
     if (cep.length !== 8) {
-      const status = document.getElementById(statusId);
-      if (status && cep.length > 0 && cep.length < 8) status.textContent = '';
+      if (cep.length < 8) setStatus('');
       return;
     }
     if (cep === lastCep) return;
     lastCep = cep;
-    const status = document.getElementById(statusId);
-    if (status) status.textContent = 'Buscando CEP...';
+    const reqId = ++inflight;
+    setStatus('Buscando CEP...');
     try {
-      const res = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
-      const data = await res.json();
-      if (data.erro) {
-        if (status) status.textContent = 'CEP não encontrado.';
+      // Proxy Netlify (estável) — não depende de CSP para viacep no browser
+      const res = await fetch('/.netlify/functions/cep?cep=' + encodeURIComponent(cep), {
+        headers: { Accept: 'application/json' },
+        cache: 'no-store'
+      });
+      if (reqId !== inflight) return;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.erro) {
+        setStatus(data.message || 'CEP não encontrado.');
+        lastCep = '';
         return;
       }
-      if (status) status.textContent = (data.localidade || '') + ' - ' + (data.uf || '');
-      saveBuyMeta(
-        document.getElementById(nameId)?.value || loadBuyMeta().nome,
-        input.value,
-        data.localidade || '',
-        data.uf || ''
-      );
+      const cidade = data.localidade || data.city || '';
+      const uf = data.uf || data.state || '';
+      setStatus(cidade && uf ? (cidade + ' - ' + uf) : (cidade || 'CEP encontrado'));
+      try {
+        saveBuyMeta(
+          document.getElementById(nameId)?.value || loadBuyMeta().nome,
+          input.value,
+          cidade,
+          uf
+        );
+      } catch (_) {}
     } catch (_) {
-      if (status) status.textContent = 'Falha ao buscar CEP.';
+      if (reqId !== inflight) return;
+      setStatus('Falha ao buscar CEP.');
       lastCep = '';
     }
   };
 
   input.addEventListener('input', () => {
     clearTimeout(timer);
-    timer = setTimeout(lookup, 280);
+    timer = setTimeout(lookup, 300);
   });
-  input.addEventListener('blur', lookup);
+  input.addEventListener('blur', () => {
+    clearTimeout(timer);
+    lookup();
+  });
 }
+
 
 // PWA
 let deferredPrompt;
