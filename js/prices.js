@@ -1,6 +1,11 @@
+/**
+ * Validação e parse de preços (compartilhado com sync se necessário)
+ */
+
 export function parsePrice(str) {
   if (str == null || str === '') return 0;
   const s = String(str).trim().replace(/\s/g, '');
+  // Aceita "89,90" ou "89.90" ou "1.234,56"
   if (s.includes(',')) {
     return parseFloat(s.replace(/\./g, '').replace(',', '.')) || 0;
   }

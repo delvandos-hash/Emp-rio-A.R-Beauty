@@ -137,3 +137,18 @@ Guia completo: [`docs/GOOGLE_SETUP.md`](docs/GOOGLE_SETUP.md)
 
 Env no Netlify: `GIST_CATALOG_URL` + `SITE_URL`.
 
+## Correções pós-auditoria (2026-11-06)
+
+- `/feed.xml`: function ESM + `node_bundler = esbuild` + Gist padrão (funciona sem env).
+- Bloqueio de `catalogo.generated.json` e `/data/*` via redirect 404.
+- `.gitignore` impede versionar JSON interno com custo.
+- Catálogo público na raiz sincronizado com o Gist (sem `basePrice` / `sourceUrl`).
+- Aba Lojas R$10 + carrossel Ofertas no front.
+
+Env Netlify **recomendado** (opcional se usar o Gist padrão do código):
+
+| Variável | Uso |
+|----------|-----|
+| `GIST_CATALOG_URL` | URL raw do catálogo público |
+| `SITE_URL` | `https://emporioar-beauty.netlify.app` |
+

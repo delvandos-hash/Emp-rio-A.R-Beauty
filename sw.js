@@ -1,42 +1,58 @@
-const CACHE_VERSION = 'emporio-ar-v3.2.6'; // Versão atualizada para forçar o cache
-const PRECACHE_ASSETS = [
+const CACHE = 'ar-beauty-v4';
+const PRECACHE = [
   '/',
   '/index.html',
-  '/js/app.js',
-  '/js/prices.js',
-  '/manifest.webmanifest'
+  '/manifest.webmanifest',
+  '/assets/logo.jpg',
+  '/assets/icon-192.png',
+  '/catalogo.json',
 ];
 
-self.addEventListener('install', (event) => {
-  self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => cache.addAll(PRECACHE_ASSETS))
+self.addEventListener('install', (e) => {
+  e.waitUntil(
+    caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting())
   );
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_VERSION) return caches.delete(cacheName);
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (e) => {
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET') return;
+
+  const networkFirst =
+    url.pathname === '/' ||
+    url.pathname.endsWith('.html') ||
+    url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.json') ||
+    url.pathname.includes('/.netlify/functions/');
+
+  if (networkFirst) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const copy = res.clone();
+          if (res.ok && !url.pathname.includes('/functions/')) {
+            caches.open(CACHE).then(c => c.put(e.request, copy));
+          }
+          return res;
         })
-      );
-    }).then(() => self.clients.claim())
-  );
-});
+        .catch(() => caches.match(e.request))
+    );
+    return;
+  }
 
-self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET' || event.request.url.includes('/.netlify/functions/')) return;
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        if (response && response.status === 200) {
-          const responseClone = response.clone();
-          caches.open(CACHE_VERSION).then((cache) => cache.put(event.request, responseClone));
-        }
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+  e.respondWith(
+    caches.match(e.request).then(r => r || fetch(e.request).then(res => {
+      const copy = res.clone();
+      if (res.ok) caches.open(CACHE).then(c => c.put(e.request, copy));
+      return res;
+    }))
   );
 });
