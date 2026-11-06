@@ -61,7 +61,25 @@
     .btn-sm { border: none; border-radius: 8px; padding: .35rem .65rem; font-size: .7rem; font-weight: 600; cursor: pointer; }
     .btn-details { background: #f3f4f6; color: #111; }
     .btn-cart { background: #e0e7ff; color: #3730a3; }
+    .btn-cart.in-cart { background: #bbf7d0; color: #166534; }
     .btn-buy { background: var(--wa); color: #fff; }
+
+    /* Badge "Já no carrinho" sobre o card */
+    .badge-in-cart {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background: #16a34a;
+      color: #fff;
+      font-size: .58rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: .02em;
+      z-index: 3;
+      box-shadow: 0 1px 4px rgba(0,0,0,.15);
+    }
+
     .empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
     footer { text-align: center; padding: 1.5rem 1rem; font-size: .72rem; color: var(--muted); border-top: 1px solid var(--border); background: #fff; }
     #bootStatus { text-align: center; padding: 2rem; color: var(--muted); }
@@ -90,16 +108,24 @@
     #cartPanel.open { transform: translateX(0); }
     .cart-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.1rem; border-bottom: 1px solid var(--border); font-weight: 700; }
     .cart-header button { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--muted); }
-    #cartList { flex: 1; overflow-y: auto; padding: 0.75rem 1rem; }
+    #cartList { flex: 1; overflow-y: auto; padding: 0.85rem 1rem; }
     .cart-empty { text-align: center; color: var(--muted); padding: 2rem 1rem; }
-    .cart-item { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.7rem 0; border-bottom: 1px solid var(--border); }
+    .cart-item { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.85rem 0; border-bottom: 1px solid var(--border); position: relative; }
     .cart-item img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; background: #f3f4f6; }
     .cart-item-info { flex: 1; min-width: 0; }
-    .cart-item-name { font-size: .82rem; font-weight: 600; line-height: 1.25; }
-    .cart-item-meta { font-size: .7rem; color: var(--muted); margin: 2px 0; }
+    .cart-item-name { font-size: .92rem; font-weight: 700; line-height: 1.25; }
+    .cart-item-meta { font-size: .74rem; color: var(--muted); margin: 2px 0; }
     .cart-item-price { font-size: .78rem; }
-    .cart-qty { width: 52px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 6px; font-size: .8rem; text-align: center; }
-    .cart-remove { background: none; border: none; color: #9ca3af; font-size: 1rem; cursor: pointer; padding: 4px; }
+    .cart-remove { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; border-radius: 8px; padding: 0.35rem 0.7rem; font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: background .15s; flex-shrink: 0; }
+    .cart-remove:hover { background: #fecaca; }
+
+    /* Controles de quantidade no carrinho */
+    .cart-qty-controls { display: inline-flex; align-items: center; gap: 0.35rem; margin-top: 0.35rem; }
+    .cart-qty-btn { width: 34px; height: 34px; border: 1px solid var(--border); background: #f9fafb; border-radius: 8px; font-size: 1.15rem; font-weight: 700; line-height: 1; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, transform .1s; }
+    .cart-qty-btn:hover { background: #e5e7eb; }
+    .cart-qty-btn:active { transform: scale(.95); }
+    .cart-qty-btn:disabled { opacity: .4; cursor: not-allowed; }
+    .cart-qty-value { min-width: 28px; text-align: center; font-weight: 700; font-size: .95rem; color: var(--text); }
 
     #cartSummary { padding: 0.8rem 1rem; border-top: 1px solid var(--border); background: var(--card); }
     .cart-total { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: .95rem; }
@@ -132,9 +158,11 @@
 
     @media (prefers-color-scheme: dark) {
       #cartPanel, .modal-box { background: #1f2937; }
-      .form-group input, .btn-outline, .cart-qty { background: #111827; color: var(--text); border-color: #374151; }
+      .form-group input, .btn-outline, .cart-qty-btn { background: #111827; color: var(--text); border-color: #374151; }
       #buyPricePreview, #checkoutSummary { background: #111827; }
       #cartSummary { background: #1f2937; }
+      .cart-remove { background: rgba(185,28,28,.25); color: #fca5a5; border-color: #b91c1c; }
+      .cart-remove:hover { background: rgba(185,28,28,.4); }
     }
 
     .details-photo { text-align: center; margin-bottom: 0.85rem; }
@@ -161,6 +189,34 @@
     .details-nav .nav-pos { font-size: .78rem; color: var(--muted); font-weight: 600; }
 
     .fab-wa { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--wa); color: #fff; width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; box-shadow: 0 4px 12px rgba(0,0,0,.3); z-index: 300; text-decoration: none; }
+
+    /* Botão voltar ao topo */
+    .back-to-top {
+      position: fixed;
+      bottom: 5.5rem;
+      right: 1.5rem;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: #0f172a;
+      color: #fff;
+      font-size: 1.3rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,.3);
+      z-index: 350;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      transition: opacity .25s ease, transform .2s ease;
+    }
+    .back-to-top:hover { background: #1e293b; }
+    .back-to-top:active { transform: scale(.95); }
+    @media (prefers-color-scheme: dark) {
+      .back-to-top { background: #f8fafc; color: #0f172a; }
+      .back-to-top:hover { background: #e2e8f0; }
+    }
 
     /* ESCONDE O BADGE "POWERED BY NETLIFY" */
     #netlify-badge, .netlify-badge, [data-netlify-site-id],
@@ -213,6 +269,47 @@
     .load-more-wrap { display: flex; justify-content: center; padding: 1rem 0 2rem; }
     .btn-load-more { background: #111; color: #fff; border: none; padding: .75rem 1.4rem; border-radius: 999px; font-size: .88rem; font-weight: 600; cursor: pointer; }
     .btn-load-more:hover { background: #333; }
+
+    /* Favoritos — cabeçalho com contador e ordenação */
+    .fav-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .5rem;
+      margin-bottom: .75rem;
+      flex-wrap: wrap;
+    }
+    .fav-toolbar .fav-count {
+      font-size: .85rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .fav-toolbar .fav-sort {
+      padding: .5rem .65rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      font-size: .8rem;
+      cursor: pointer;
+    }
+    .btn-add-all-fav {
+      width: 100%;
+      margin: .25rem 0 .85rem;
+      padding: .7rem;
+      border: none;
+      border-radius: 12px;
+      background: var(--wa);
+      color: #fff;
+      font-weight: 700;
+      font-size: .85rem;
+      cursor: pointer;
+    }
+    .btn-add-all-fav:hover { background: var(--wa-dark); }
+    .btn-add-all-fav:active { transform: scale(.98); }
+
+    @media (prefers-color-scheme: dark) {
+      .fav-toolbar .fav-sort { background: #111827; color: var(--text); border-color: #374151; }
+    }
   </style>
   <script type="application/ld+json">
   {
@@ -383,14 +480,32 @@
   <div class="modal" id="favoritesModal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Favoritos">
     <div class="modal-box">
       <div class="modal-header">
-        <h2>♥ Meus Favoritos</h2>
+        <h2 id="favoritesTitle">♥ Meus Favoritos</h2>
         <button type="button" class="modal-close" data-close="favoritesModal" aria-label="Fechar">✕</button>
       </div>
+      <div class="fav-toolbar" id="favoritesToolbar" style="display:none">
+        <span class="fav-count" id="favoritesCountLabel">0 itens</span>
+        <select class="fav-sort" id="favoritesSort" aria-label="Ordenar favoritos">
+          <option value="added">Adicionados recentemente</option>
+          <option value="name-asc">Nome A–Z</option>
+          <option value="name-desc">Nome Z–A</option>
+          <option value="price-asc">Menor preço</option>
+          <option value="price-desc">Maior preço</option>
+        </select>
+      </div>
+      <button type="button" id="btnAddAllFav" class="btn-add-all-fav" style="display:none">
+        🛒 Adicionar todos os favoritos ao carrinho
+      </button>
       <div id="favoritesList"></div>
     </div>
   </div>
 
   <a href="#" id="fabWhatsApp" class="fab-wa" aria-label="WhatsApp">💬</a>
+
+  <button type="button" id="btnBackToTop" class="back-to-top" aria-label="Voltar ao topo" title="Voltar ao topo">
+    ↑
+  </button>
+
   <script type="module" src="js/app.js"></script>
 </body>
 </html>
