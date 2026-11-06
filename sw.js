@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'emporio-ar-v3.2.1'; // FORÇAR DOWNLOAD NOVO
+const CACHE_VERSION = 'emporio-ar-v3.2.6'; // Versão atualizada para forçar o cache
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
