@@ -1,5 +1,6 @@
 /**
  * Empório A.R. Beauty — Catálogo completo
+ * Correção: Atacado global (se o carrinho tiver 6+ itens, todos os itens de varejo mudam para atacado).
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
@@ -16,11 +17,17 @@ function decodeHtml(str) { if (!str) return ''; const t = document.createElement
 function normId(s) { return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
 function productId(p) { return `${normId(p.brand)}-${normId(p.nome)}-${normId(p.volume)}`; }
 function displayName(nome) { return String(nome||'').replace(/\s*\|\s*Atacado\s*$/i,'').trim(); }
-function unitPrice(p, qty) {
+
+// Correção principal: unitPrice agora aceita o total de itens do carrinho (globalQty)
+function unitPrice(p, itemQty, globalQty) {
   if (p.somenteAtacado) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
-  if (qty >= 6) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
+  // Se o total global do carrinho for >= 6, aplica atacado para todos os itens de varejo
+  if (globalQty >= 6) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
+  // Se a quantidade individual já atingiu 6, aplica atacado
+  if (itemQty >= 6) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
   return { price: parsePrice(p.varejo), tipo: 'Varejo' };
 }
+
 function safeGet(key, fallback) { try { const raw = localStorage.getItem(key); if (raw == null) return fallback; return JSON.parse(raw) ?? fallback; } catch { return fallback; } }
 function safeSet(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch {} }
 
@@ -73,7 +80,7 @@ async function loadCatalogData() {
       if (!res.ok) continue;
       const j = JSON.parse((await res.text()).replace(/^\uFEFF/, ''));
       if (j && j.DATA && Object.keys(j.DATA).length > 0) return j;
-    } catch (e) { console.warn('Falha no fetch:', url, e); }
+    } catch (e) { console.warn(url, e); }
   }
   return null;
 }
@@ -99,6 +106,7 @@ async function init() {
   DATA = dados.DATA;
   DESTAQUES = dados.DESTAQUES || {};
   WHATSAPP = dados.WHATSAPP || '5562991134488';
+  allProductsCache = null;
 
   if (boot) boot.style.display = 'none';
   
@@ -249,11 +257,16 @@ function addToCart(p, qty=1) {
 function removeFromCart(id) { delete cart[id]; saveCart(); renderCart(); }
 function setCartQty(id, qty) { qty = parseInt(qty,10); if (!qty || qty < 1) return removeFromCart(id); if (cart[id]) { cart[id].qty = qty; saveCart(); renderCart(); } }
 function clearCart() { cart = {}; saveCart(); renderCart(); }
+
 function cartTotals() {
   let subtotal=0, totalItems=0; const lines=[];
+  // Pega o total global do carrinho para a regra de atacado
+  const globalQty = Object.values(cart).reduce((s,i)=>s+i.qty,0);
+
   for (const [id, item] of Object.entries(cart)) {
     const { product:p, qty } = item;
-    const { price, tipo } = unitPrice(p, qty);
+    // Passa o globalQty para a função unitPrice
+    const { price, tipo } = unitPrice(p, qty, globalQty);
     const lineTotal = price * qty;
     subtotal += lineTotal; totalItems += qty;
     lines.push({ id, p, qty, price, tipo, lineTotal });
@@ -557,21 +570,25 @@ function openBuyModal(p) {
   document.getElementById('cepStatus').textContent = saved.cidade ? `${saved.cidade} - ${saved.uf}` : '';
   updateBuyPricePreview(); openModal('buyModal');
 }
+
 function updateBuyPricePreview() {
   if (!buyProduct) return;
   const qty = parseInt(document.getElementById('buyQty')?.value||'1',10)||1;
-  const { price, tipo } = unitPrice(buyProduct, qty);
+  // No modal de compra direta, o item é isolado, então a regra de atacado usa apenas a qty dele.
+  const { price, tipo } = unitPrice(buyProduct, qty, qty);
   const el = document.getElementById('buyPricePreview');
   if (el) {
     const hint = (!buyProduct.somenteAtacado && qty < 6) ? `<span class="price-hint">Faltam ${6-qty} para preço de atacado</span>` : '';
     el.innerHTML = `<span class="price-tipo">${escapeHtml(tipo)}</span><span class="price-unit">R$ ${formatPrice(price)} / un</span><strong class="price-sub">Subtotal: R$ ${formatPrice(price*qty)}</strong>${hint}`;
   }
 }
+
 function validateCheckout(nome, cep) {
   if (!(nome || '').trim() || nome.trim().length < 2) { showToast('Informe seu nome (mín. 2 letras).'); return false; }
   if (!(cep || '').replace(/\D/g,'').length === 8) { showToast('CEP inválido (8 dígitos).'); return false; }
   return true;
 }
+
 function confirmBuy() {
   if (!buyProduct) return;
   const nome = document.getElementById('buyNome')?.value?.trim()||'';
@@ -579,7 +596,7 @@ function confirmBuy() {
   const qty = parseInt(document.getElementById('buyQty')?.value||'1',10)||1;
   if (!validateCheckout(nome, cep)) return;
   saveBuyMeta(nome, cep, loadBuyMeta().cidade, loadBuyMeta().uf);
-  const { price, tipo } = unitPrice(buyProduct, qty);
+  const { price, tipo } = unitPrice(buyProduct, qty, qty);
   let varText = buyProduct.variacaoSelecionada ? `\nVariação: ${buyProduct.variacaoSelecionada.nome}` : '';
   let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n*${displayName(buyProduct.nome)}*${varText}\n${buyProduct.brand||''} · ${buyProduct.volume||''}\nQtd: ${qty}\nPreço (${tipo}): R$ ${formatPrice(price)}\nSubtotal: R$ ${formatPrice(price*qty)}\n\n`;
   if (nome) msg += `Nome: ${nome}\n`;
@@ -593,7 +610,10 @@ function renderCart() {
   const list = document.getElementById('cartList');
   const summary = document.getElementById('cartSummary');
   if (!list) return;
+  
+  // ATUALIZA OS TOTAIS AQUI, O QUE REFLETE OS PREÇOS GLOBAIS
   const { subtotal, totalItems, lines } = cartTotals();
+  
   if (!lines.length) {
     list.innerHTML = '<p class="cart-empty">Seu carrinho está vazio.</p>';
     if (summary) summary.innerHTML = '';
@@ -603,7 +623,10 @@ function renderCart() {
   
   const GLOBAL_ATACADO_TARGET = 6;
   let temItemVarejoPendente = false;
-  lines.forEach(l => { if (!l.p.somenteAtacado && l.qty < GLOBAL_ATACADO_TARGET) temItemVarejoPendente = true; });
+  
+  lines.forEach(l => { 
+    if (!l.p.somenteAtacado && l.tipo === 'Varejo') temItemVarejoPendente = true; 
+  });
   
   let avisoHtml = '';
   if (temItemVarejoPendente && totalItems < GLOBAL_ATACADO_TARGET) {
