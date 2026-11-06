@@ -1,8 +1,7 @@
 /**
  * Empório A.R. Beauty — Catálogo completo
- * Melhorias: favoritos (botão + modal + ordenação + add all),
- * nome/CEP lembrados, múltiplas variações, botões +/- no carrinho,
- * botão voltar ao topo, badge "já no carrinho" e correção do aviso de atacado.
+ * Melhorias: favoritos, nome/CEP lembrados, múltiplas variações, botões +/-,
+ * voltar ao topo, badge "já no carrinho" e cálculo global de atacado.
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
@@ -78,12 +77,8 @@ function safeSet(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
-// ===== Nome/CEP lembrados (última inserção) =====
 const BUY_META_KEY = 'emporio_buy_meta_v3';
-
-function loadBuyMeta() {
-  return safeGet(BUY_META_KEY, { nome: '', cep: '' });
-}
+function loadBuyMeta() { return safeGet(BUY_META_KEY, { nome: '', cep: '' }); }
 function saveBuyMeta(nome, cep) {
   const prev = loadBuyMeta();
   safeSet(BUY_META_KEY, {
@@ -699,18 +694,31 @@ function renderCart() {
       <div style="font-size:1rem;font-weight:800;margin-top:.15rem">Itens: ${totalItems} · Total: R$ ${formatPrice(subtotal)}</div>
     </div>`;
 
-  // CORREÇÃO: Lógica para exibir aviso de atacado corretamente
-  const temAtacado = lines.some(l => l.tipo === 'Atacado');
-  const todosSomenteAtacado = lines.every(l => l.p.somenteAtacado === true);
-  const atingiuAtacadoPorQtd = lines.some(l => !l.p.somenteAtacado && l.qty >= 6);
+  // LÓGICA GLOBAL DE ATACADO: conta o total de itens do carrinho (incluindo boxes)
+  const GLOBAL_ATACADO_TARGET = 6;
+  let temAtacado = false;
+  let algumItemPrecisaAtacado = false;
+
+  lines.forEach(l => {
+    if (l.tipo === 'Atacado') temAtacado = true;
+    if (!l.p.somenteAtacado && l.qty < GLOBAL_ATACADO_TARGET) {
+      algumItemPrecisaAtacado = true;
+    }
+  });
 
   let avisoHtml = '';
-  if (todosSomenteAtacado) {
-    // Se todos os itens são boxes/caixas (somente atacado), não cita "6+"
-    avisoHtml = `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado</div>`;
-  } else if (temAtacado) {
-    // Se tem uma mistura (ou atingiu 6+), mantém a explicação
-    avisoHtml = `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado (6+ itens)</div>`;
+  if (temAtacado) {
+    avisoHtml += `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado</div>`;
+  }
+
+  // Se o total de itens for menor que 6, avisa quanto falta globalmente
+  if (totalItems < GLOBAL_ATACADO_TARGET) {
+    const faltam = GLOBAL_ATACADO_TARGET - totalItems;
+    // Só mostra se houver algum item de varejo no carrinho que possa se beneficiar
+    const temItemVarejo = lines.some(l => !l.p.somenteAtacado);
+    if (temItemVarejo) {
+      avisoHtml += `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#92400e;font-size:.82rem;font-weight:700">⚠️ Faltam ${faltam} item(ns) para liberar o preço de atacado nos produtos de varejo.</div>`;
+    }
   }
 
   const itemsHtml = lines.map(({id,p,qty,price,tipo,lineTotal}) => {
@@ -881,7 +889,6 @@ function renderFavoritesList() {
   const titleEl = document.getElementById('favoritesTitle');
   if (!list) return;
 
-  // Título com contador
   if (titleEl) {
     titleEl.textContent = favorites.size
       ? `♥ Meus Favoritos (${favorites.size})`
@@ -903,7 +910,6 @@ function renderFavoritesList() {
     return;
   }
 
-  // Toolbar visível
   if (toolbar) toolbar.style.display = 'flex';
   if (countLabel) countLabel.textContent = `${products.length} item(ns)`;
   if (addAllBtn) addAllBtn.style.display = '';
@@ -967,8 +973,7 @@ function addAllFavoritesToCart() {
   ids.forEach(id => {
     const p = findProduct(id);
     if (!p) return;
-    if ((p.disponivel||'').toLowerCase() !== 'sim') return; // pula esgotados
-    // Se tiver variações, não dá para saber qual — usa a primeira disponível
+    if ((p.disponivel||'').toLowerCase() !== 'sim') return;
     if (Array.isArray(p.variacoes) && p.variacoes.length) {
       const v = p.variacoes.find(x => x.estoque === undefined || Number(x.estoque) > 0);
       if (v) {
@@ -1054,13 +1059,11 @@ document.getElementById('btnConfirmBuy')?.addEventListener('click', confirmBuy);
 document.getElementById('btnConfirmCheckout')?.addEventListener('click', confirmCartCheckout);
 document.querySelectorAll('[data-close]').forEach(el => el.addEventListener('click', () => closeModal(el.dataset.close)));
 
-// Ordenação de favoritos
 document.getElementById('favoritesSort')?.addEventListener('change', e => {
   favoritesSort = e.target.value || 'added';
   safeSet('fav_sort', favoritesSort);
   renderFavoritesList();
 });
-// Adicionar todos os favoritos
 document.getElementById('btnAddAllFav')?.addEventListener('click', addAllFavoritesToCart);
 
 document.getElementById('fabWhatsApp')?.addEventListener('click', () => {
@@ -1099,7 +1102,6 @@ function openProductFromUrl() {
   } catch(_){}
 }
 
-// ===== Voltar ao topo =====
 const btnBackToTop = document.getElementById('btnBackToTop');
 if (btnBackToTop) {
   const onScrollTop = () => {
