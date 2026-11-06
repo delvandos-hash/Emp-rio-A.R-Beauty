@@ -28,7 +28,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); line-height: 1.45; min-height: 100vh; }
     header { background: linear-gradient(145deg, #121212 0%, #2a2a2a 100%); color: #fff; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; position: sticky; top: 0; z-index: 200; box-shadow: 0 4px 24px rgba(0,0,0,.35); }
-    .brand { display: flex; align-items: center; gap: .85rem; text-decoration: none; color: inherit; }
+    .brand { display: flex; align-items: center; gap: .85rem; text-decoration: none; color: inherit; cursor: pointer; }
     .brand img { width: 52px; height: 52px; border-radius: 50%; background: #fff; object-fit: contain; box-shadow: 0 0 0 2px var(--gold); }
     .brand h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: .04em; }
     .brand span { display: block; font-size: .7rem; opacity: .75; font-weight: 400; }
@@ -214,7 +214,6 @@
     .back-to-top:active { transform: scale(.95); }
     @media (prefers-color-scheme: dark) { .back-to-top { background: #f8fafc; color: #0f172a; } .back-to-top:hover { background: #e2e8f0; } }
 
-    /* FORÇA A REMOÇÃO DO BADGE NETLIFY */
     #netlify-badge, .netlify-badge, [data-netlify-site-id], #nf-banner, .nf-banner, iframe[src*="netlify"], a[href*="netlify.com"][target="_blank"], #netlify-drawer, .netlify-drawer, body > div[id*="netlify" i], body > a[href*="netlify"], div[style*="position: fixed"][style*="bottom"], #nl-badge-frame {
       display: none !important; opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; width: 0 !important; height: 0 !important; z-index: -9999 !important;
     }
@@ -265,14 +264,13 @@
   </script>
 </head>
 <body>
-  <!-- Script para remover o Badge da Netlify que é injetado no DOM -->
   <script>
     (function removeNetlifyBadge() {
       function nuke() {
         const selectors = '#netlify-badge, #nl-badge-frame, .netlify-badge, [data-netlify-site-id], iframe[title*="Netlify"], iframe[title*="Powered by Netlify"]';
         document.querySelectorAll(selectors).forEach(el => el.remove());
       }
-      setInterval(nuke, 500); // Roda a cada meio segundo na primeira vez
+      setInterval(nuke, 500);
       [100, 500, 1000, 2000, 4000].forEach(t => setTimeout(nuke, t));
       const obs = new MutationObserver(nuke);
       obs.observe(document.body, { childList: true, subtree: true });
