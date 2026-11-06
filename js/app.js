@@ -611,7 +611,7 @@ function renderCart() {
     if (summary) summary.innerHTML = '';
     updateMobileCartBar(); return;
   }
-  const resumoHtml = `<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:.75rem .9rem;margin-bottom:.75rem;color:#065f46"><div style="font-size:.78rem;font-weight:600;opacity:.8">Resumo do pedido</div><div style="font-size:1rem;font-weight:800;margin-top:.15rem">Itens: ${totalItems} · Total: R$ ${formatPrice(subtotal)}</div></div>`;
+  const resumoHtml = `<div style="background:#ecfdf5;border:1px solid #a7f3d0;border-radius:12px;padding:.55rem .75rem;margin-bottom:.45rem;color:#065f46"><div style="font-size:.78rem;font-weight:600;opacity:.8">Resumo do pedido</div><div style="font-size:1rem;font-weight:800;margin-top:.15rem">Itens: ${totalItems} · Total: R$ ${formatPrice(subtotal)}</div></div>`;
   
   const GLOBAL_ATACADO_TARGET = 6;
   let temItemVarejoPendente = false;
@@ -623,9 +623,9 @@ function renderCart() {
   let avisoHtml = '';
   if (temItemVarejoPendente && totalItems < GLOBAL_ATACADO_TARGET) {
     const faltam = GLOBAL_ATACADO_TARGET - totalItems;
-    avisoHtml = `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#92400e;font-size:.82rem;font-weight:700">⚠️ Faltam ${faltam} item(ns) para liberar o preço de atacado nos produtos de varejo.</div>`;
+    avisoHtml = `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:.45rem .7rem;margin-bottom:.4rem;color:#92400e;font-size:.82rem;font-weight:700">⚠️ Faltam ${faltam} item(ns) para liberar o preço de atacado nos produtos de varejo.</div>`;
   } else if (lines.some(l => l.tipo === 'Atacado')) {
-    avisoHtml = `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado</div>`;
+    avisoHtml = `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.45rem .7rem;margin-bottom:.4rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado</div>`;
   }
 
   const itemsHtml = lines.map(({id,p,qty,price,tipo,lineTotal}) => {
@@ -692,8 +692,46 @@ function copyQuote() {
   }
 }
 
-function openCart() { renderCart(); document.getElementById('cartOverlay')?.classList.add('open'); document.getElementById('cartPanel')?.classList.add('open'); document.getElementById('cartPanel')?.setAttribute('aria-hidden','false'); document.body.style.overflow = 'hidden'; }
-function closeCart() { document.getElementById('cartOverlay')?.classList.remove('open'); document.getElementById('cartPanel')?.classList.remove('open'); document.getElementById('cartPanel')?.setAttribute('aria-hidden','true'); if (!document.querySelector('.modal.open')) document.body.style.overflow = ''; }
+
+function resetToHome(e) {
+  if (e) e.preventDefault();
+  currentLine = 'all';
+  searchTerm = '';
+  filterDisp = 'all';
+  filterPreco = 'all';
+  sortBy = 'default';
+  filterMarca = 'all';
+  page = 1;
+  const search = document.getElementById('searchInput');
+  if (search) search.value = '';
+  const fd = document.getElementById('filterDisponivel');
+  if (fd) fd.value = 'all';
+  const fp = document.getElementById('filterPreco');
+  if (fp) fp.value = 'all';
+  const sb = document.getElementById('sortBy');
+  if (sb) sb.value = 'default';
+  const fm = document.getElementById('filterMarca');
+  if (fm) fm.value = 'all';
+  document.querySelectorAll('#tabs .tab').forEach(tab => {
+    tab.classList.toggle('active', (tab.dataset.line || 'all') === 'all');
+  });
+  try { saveFilters(); } catch (_) {}
+  closeCart();
+  try { closeModal('detailsModal'); } catch (_) {}
+  try { closeModal('buyModal'); } catch (_) {}
+  try { closeModal('checkoutModal'); } catch (_) {}
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('produto');
+    history.replaceState({}, '', url.pathname);
+  } catch (_) {}
+  renderProducts(true);
+  try { renderDestaques(); } catch (_) {}
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function openCart() { renderCart(); document.getElementById('cartOverlay')?.classList.add('open'); document.getElementById('cartPanel')?.classList.add('open'); document.getElementById('cartPanel')?.setAttribute('aria-hidden','false'); document.body.classList.add('cart-open'); document.body.style.overflow = 'hidden'; }
+function closeCart() { document.getElementById('cartOverlay')?.classList.remove('open'); document.getElementById('cartPanel')?.classList.remove('open'); document.getElementById('cartPanel')?.setAttribute('aria-hidden','true'); if (!document.querySelector('.modal.open')) document.body.classList.remove('cart-open'); document.body.style.overflow = ''; }
 
 function openCartCheckout() {
   const { lines, subtotal, totalItems } = cartTotals();
@@ -1005,3 +1043,5 @@ function bindGlobalEvents() {
 
 // Iniciar
 init();
+
+document.getElementById('brandHome')?.addEventListener('click', resetToHome);
