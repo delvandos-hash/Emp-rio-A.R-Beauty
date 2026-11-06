@@ -694,31 +694,25 @@ function renderCart() {
       <div style="font-size:1rem;font-weight:800;margin-top:.15rem">Itens: ${totalItems} · Total: R$ ${formatPrice(subtotal)}</div>
     </div>`;
 
-  // LÓGICA GLOBAL DE ATACADO: conta o total de itens do carrinho (incluindo boxes)
+  // LÓGICA DE AVISO NO TOPO: Verifica se há itens de varejo pendentes
   const GLOBAL_ATACADO_TARGET = 6;
-  let temAtacado = false;
-  let algumItemPrecisaAtacado = false;
+  let temItemVarejoPendente = false;
 
   lines.forEach(l => {
-    if (l.tipo === 'Atacado') temAtacado = true;
     if (!l.p.somenteAtacado && l.qty < GLOBAL_ATACADO_TARGET) {
-      algumItemPrecisaAtacado = true;
+      temItemVarejoPendente = true;
     }
   });
 
   let avisoHtml = '';
-  if (temAtacado) {
-    avisoHtml += `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado</div>`;
-  }
-
-  // Se o total de itens for menor que 6, avisa quanto falta globalmente
-  if (totalItems < GLOBAL_ATACADO_TARGET) {
+  
+  if (temItemVarejoPendente && totalItems < GLOBAL_ATACADO_TARGET) {
+    // Se tem item de varejo que não bateu a meta E o carrinho todo não chegou a 6
     const faltam = GLOBAL_ATACADO_TARGET - totalItems;
-    // Só mostra se houver algum item de varejo no carrinho que possa se beneficiar
-    const temItemVarejo = lines.some(l => !l.p.somenteAtacado);
-    if (temItemVarejo) {
-      avisoHtml += `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#92400e;font-size:.82rem;font-weight:700">⚠️ Faltam ${faltam} item(ns) para liberar o preço de atacado nos produtos de varejo.</div>`;
-    }
+    avisoHtml = `<div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#92400e;font-size:.82rem;font-weight:700">⚠️ Faltam ${faltam} item(ns) para liberar o preço de atacado nos produtos de varejo.</div>`;
+  } else if (lines.some(l => l.tipo === 'Atacado')) {
+    // Se todos os itens de varejo já estão em atacado (ou não tem varejo)
+    avisoHtml = `<div style="background:#d1fae5;border:1px solid #6ee7b7;border-radius:10px;padding:.55rem .8rem;margin-bottom:.75rem;color:#065f46;font-size:.82rem;font-weight:700">✓ Preço de ATACADO aplicado</div>`;
   }
 
   const itemsHtml = lines.map(({id,p,qty,price,tipo,lineTotal}) => {
