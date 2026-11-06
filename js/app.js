@@ -1,5 +1,6 @@
 /**
  * Empório A.R. Beauty — Catálogo completo
+ * Melhorias aplicadas: favoritos (botão + modal), nome/CEP lembrados, múltiplas variações.
  */
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
@@ -75,6 +76,20 @@ function safeSet(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
 }
 
+// ===== Nome/CEP lembrados (última inserção) =====
+const BUY_META_KEY = 'emporio_buy_meta_v3';
+
+function loadBuyMeta() {
+  return safeGet(BUY_META_KEY, { nome: '', cep: '' });
+}
+function saveBuyMeta(nome, cep) {
+  const prev = loadBuyMeta();
+  safeSet(BUY_META_KEY, {
+    nome: (nome ?? prev.nome ?? '').trim(),
+    cep: (cep ?? prev.cep ?? '').trim()
+  });
+}
+
 async function loadCatalogData() {
   for (const url of CATALOG_URLS) {
     try {
@@ -143,12 +158,10 @@ function isOferta(p) {
   const d = (p.destaque || '').toLowerCase();
   return b.includes('OFERTA') || d === 'ofertaslimitadas' || d === 'ofertas';
 }
-// Vitrine (ofertas/lojas) fica fora de "Todos" e das linhas de categoria
 function isVitrineProduct(p) {
   return isLojas10(p) || isOferta(p);
 }
 
-/** Itens de uma vitrine: DESTAQUES primeiro; se vazio, reconstrói pelo badge no DATA */
 function getDestaqueItems(key) {
   const fromDest = DESTAQUES[key]?.items || [];
   if (fromDest.length) {
@@ -167,11 +180,9 @@ function getDestaqueItems(key) {
 }
 
 function matchesFilters(p) {
-  // Aba dedicada: Lojas de R$10,00
   if (currentLine === 'lojas10') {
     if (!isLojas10(p)) return false;
   } else {
-    // Catálogo geral / categorias: esconde vitrines
     if (isVitrineProduct(p)) return false;
     if (currentLine !== 'all' && p.line !== currentLine) return false;
   }
@@ -292,6 +303,8 @@ function bindCardEvents(root) {
       if (favorites.has(id)) { favorites.delete(id); btn.classList.remove('active'); btn.setAttribute('aria-pressed','false'); }
       else { favorites.add(id); btn.classList.add('active'); btn.setAttribute('aria-pressed','true'); }
       safeSet('fav_maquiagem', [...favorites]);
+      updateFavBadge();
+      if (document.getElementById('favoritesModal')?.classList.contains('open')) renderFavoritesList();
     });
   });
   root.querySelectorAll('[data-open],[data-details]').forEach(el => {
@@ -314,7 +327,6 @@ function renderDestaques() {
   const host = document.getElementById('destaquesHost');
   if (!host) return;
 
-  // Ofertas por tempo limitado — SEMPRE carrossel na home (aba Todos)
   const ofertas = getDestaqueItems('ofertasLimitadas');
   const titleOfertas = DESTAQUES.ofertasLimitadas?.title || 'Ofertas por tempo limitado';
 
@@ -348,7 +360,7 @@ function renderProducts(resetPage=true) {
   detailsNavList = filtered;
   const total = filtered.length;
   const visible = filtered.slice(0, page * PAGE_SIZE);
-  
+
   if (stats) stats.textContent = total ? `${Math.min(visible.length,total)} de ${total} produtos` : '';
   if (!total) {
     container.style.display = 'none';
@@ -363,7 +375,7 @@ function renderProducts(resetPage=true) {
   bindCardEvents(container);
 }
 
-/** Constrói os botões de variação se existirem no JSON */
+/** Constrói os botões de variação (seleção múltipla) */
 function buildVariacoesHtml(p) {
   const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
   if (!vars.length) return '';
@@ -372,29 +384,86 @@ function buildVariacoesHtml(p) {
     const id = String(v.id || v.nome || '');
     const label = escapeHtml(v.nome || '—');
     const disabled = ok ? '' : ' disabled';
-    return `<button type="button" class="var-chip" data-var-id="${id}" data-var-nome="${label}"${disabled}>
+    return `<button type="button" class="var-chip${ok?'':' var-chip-out'}" data-var-id="${id}" data-var-nome="${label}"${disabled} aria-pressed="false">
       <span class="var-chip-name">${label}</span>
     </button>`;
   }).join('');
   return `<div class="variacoes-box" id="variacoesBox">
-    <strong>Escolha a opção:</strong>
+    <strong>Escolha as opções (pode marcar várias)</strong>
     <div class="var-chips">${chips}</div>
+    <p class="var-hint" id="varHint">Selecione uma ou mais opções disponíveis</p>
+    <button type="button" id="btnAddMulti" class="btn-add-multi" style="display:none">
+      🛒 Adicionar <span id="multiCount">0</span> opção(ões) ao carrinho
+    </button>
   </div>`;
 }
 
 function bindVariacaoSelector(p) {
   const box = document.getElementById('variacoesBox');
   if (!box) return;
+  const selected = new Set();
+
+  const refresh = () => {
+    const chips = box.querySelectorAll('.var-chip');
+    chips.forEach(chip => {
+      const id = chip.getAttribute('data-var-id');
+      const on = selected.has(id);
+      chip.classList.toggle('selected', on);
+      chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    const btn = document.getElementById('btnAddMulti');
+    const count = document.getElementById('multiCount');
+    const hint = document.getElementById('varHint');
+    if (btn) btn.style.display = selected.size ? '' : 'none';
+    if (count) count.textContent = selected.size;
+    if (hint) {
+      if (selected.size) { hint.textContent = `${selected.size} opção(ões) selecionada(s)`; hint.classList.add('ok'); }
+      else { hint.textContent = 'Selecione uma ou mais opções disponíveis'; hint.classList.remove('ok'); }
+    }
+    // Compatibilidade com o fluxo de compra direta (1 variação)
+    if (selected.size === 1) {
+      const id = [...selected][0];
+      const chip = box.querySelector(`[data-var-id="${CSS.escape(id)}"]`);
+      p.variacaoSelecionada = chip ? {
+        id,
+        nome: chip.getAttribute('data-var-nome') || ''
+      } : null;
+    } else {
+      p.variacaoSelecionada = null;
+    }
+  };
+
   box.querySelectorAll('.var-chip:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => {
-      box.querySelectorAll('.var-chip').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      p.variacaoSelecionada = {
-        id: btn.getAttribute('data-var-id') || '',
-        nome: btn.getAttribute('data-var-nome') || ''
-      };
+      const id = btn.getAttribute('data-var-id');
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      refresh();
     });
   });
+
+  document.getElementById('btnAddMulti')?.addEventListener('click', () => {
+    if (!selected.size) return;
+    const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
+    let added = 0;
+    selected.forEach(id => {
+      const v = vars.find(x => String(x.id || x.nome) === id);
+      if (!v) return;
+      const clone = {
+        ...p,
+        variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || '') }
+      };
+      addToCart(clone, 1);
+      added++;
+    });
+    if (added) {
+      showToast(`${added} opção(ões) adicionada(s) ao carrinho`);
+      selected.clear();
+      refresh();
+    }
+  });
+
+  refresh();
 }
 
 function openDetails(p, opts={}) {
@@ -406,7 +475,7 @@ function openDetails(p, opts={}) {
   }
   currentProduct = p;
   p.variacaoSelecionada = null;
-  
+
   const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.foto ? [p.foto] : []);
   const mainFoto = escapeHtml(fotos[0]||'');
   const desc = escapeHtml(decodeHtml(p.notas||'').trim() || 'Sem descrição adicional.');
@@ -420,15 +489,15 @@ function openDetails(p, opts={}) {
     : `<div class="details-price"><div><span class="price-label">Varejo</span><span class="price-v">R$ ${escapeHtml(p.varejo)}</span></div>
        <div><span class="price-label">Atacado (6+)</span><span class="price-a">R$ ${escapeHtml(p.atacado)}</span></div></div>`;
   const thumbs = fotos.slice(1).map((f,i)=>`<img src="${escapeHtml(f)}" alt="" width="48" height="48" loading="lazy" data-full="${escapeHtml(f)}"/>`).join('');
-  
+
   injectProductJsonLd(p);
   const variacoesHtml = buildVariacoesHtml(p);
 
   document.getElementById('detailsContent').innerHTML = `
     <div class="details-nav">
-      <button type="button" class="nav-btn" id="detPrev" ${detailsNavIndex<=0?'disabled':''}>‹</button>
+      <button type="button" class="nav-btn" id="detPrev" ${detailsNavIndex<=0?'disabled':''} aria-label="Anterior">‹</button>
       <span class="nav-pos">${detailsNavIndex+1}/${Math.max(detailsNavList.length,1)}</span>
-      <button type="button" class="nav-btn" id="detNext" ${detailsNavIndex>=detailsNavList.length-1?'disabled':''}>›</button>
+      <button type="button" class="nav-btn" id="detNext" ${detailsNavIndex>=detailsNavList.length-1?'disabled':''} aria-label="Próximo">›</button>
     </div>
     <div class="details-photo">
       <img src="${mainFoto}" alt="${nome}" id="detailsMainImg" width="280" height="280" data-fallback="https://via.placeholder.com/400?text=Sem+foto"/>
@@ -444,7 +513,7 @@ function openDetails(p, opts={}) {
       <button class="btn-sm btn-cart" id="detailsAddCart">Carrinho</button>
       <button class="btn-sm btn-buy" id="detailsBuy">Comprar</button>
     </div>`;
-    
+
   document.querySelectorAll('.details-thumbs img').forEach(img => {
     img.addEventListener('click', () => { const m=document.getElementById('detailsMainImg'); if(m) m.src=img.dataset.full||img.src; });
   });
@@ -452,22 +521,22 @@ function openDetails(p, opts={}) {
 
   document.getElementById('detailsAddCart')?.addEventListener('click', () => {
     if (p.variacoes && p.variacoes.length > 0 && !p.variacaoSelecionada) {
-      showToast('Selecione uma opção antes de adicionar.');
+      showToast('Selecione uma opção (ou use o botão de adicionar várias).');
       return;
     }
-    addToCart(p,1); 
-    closeModal('detailsModal'); 
+    addToCart(p,1);
+    closeModal('detailsModal');
   });
-  
-  document.getElementById('detailsBuy')?.addEventListener('click', () => { 
+
+  document.getElementById('detailsBuy')?.addEventListener('click', () => {
     if (p.variacoes && p.variacoes.length > 0 && !p.variacaoSelecionada) {
-      showToast('Selecione uma opção antes de comprar.');
+      showToast('Selecione uma única opção para comprar direto. Para várias, use o carrinho.');
       return;
     }
-    closeModal('detailsModal'); 
-    openBuyModal(p); 
+    closeModal('detailsModal');
+    openBuyModal(p);
   });
-  
+
   document.getElementById('detPrev')?.addEventListener('click', () => showDetailsAt(detailsNavIndex-1,'right'));
   document.getElementById('detNext')?.addEventListener('click', () => showDetailsAt(detailsNavIndex+1,'left'));
   openModal('detailsModal');
@@ -537,8 +606,9 @@ function openBuyModal(p) {
   document.getElementById('buyProductName').textContent = displayName(p.nome);
   document.getElementById('buyProductMeta').textContent = metaText;
   document.getElementById('buyQty').value = '1';
-  document.getElementById('buyNome').value = '';
-  document.getElementById('buyCep').value = '';
+  const saved = loadBuyMeta();
+  document.getElementById('buyNome').value = saved.nome || '';
+  document.getElementById('buyCep').value = saved.cep || '';
   updateBuyPricePreview();
   openModal('buyModal');
 }
@@ -565,10 +635,11 @@ function confirmBuy() {
   const cep = document.getElementById('buyCep')?.value?.trim()||'';
   const qty = parseInt(document.getElementById('buyQty')?.value||'1',10)||1;
   if (!validateCheckout(nome, cep)) return;
+  saveBuyMeta(nome, cep);
   const { price, tipo } = unitPrice(buyProduct, qty);
-  
+
   let varText = buyProduct.variacaoSelecionada ? `\nVariação: ${buyProduct.variacaoSelecionada.nome}` : '';
-  
+
   let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n*${displayName(buyProduct.nome)}*${varText}\n${buyProduct.brand||''} · ${buyProduct.volume||''}\nQtd: ${qty}\nPreço (${tipo}): R$ ${formatPrice(price)}\nSubtotal: R$ ${formatPrice(price*qty)}\n\n`;
   if (nome) msg += `Nome: ${nome}\n`;
   if (cep) msg += `CEP: ${cep}\n`;
@@ -633,8 +704,9 @@ function openCartCheckout() {
     }).join('<br>')
       + `<br><br><strong>Total (${totalItems} itens): R$ ${formatPrice(subtotal)}</strong>`;
   }
-  document.getElementById('checkoutNome').value = '';
-  document.getElementById('checkoutCep').value = '';
+  const saved = loadBuyMeta();
+  document.getElementById('checkoutNome').value = saved.nome || '';
+  document.getElementById('checkoutCep').value = saved.cep || '';
   openModal('checkoutModal'); closeCart();
 }
 function confirmCartCheckout() {
@@ -643,6 +715,7 @@ function confirmCartCheckout() {
   const { lines, subtotal, totalItems } = cartTotals();
   if (!lines.length) return;
   if (!validateCheckout(nome, cep)) return;
+  saveBuyMeta(nome, cep);
   let msg = `*Pedido Empório A.R. Beauty*\n\nOlá! Gostaria de fazer um pedido:\n\n`;
   for (const l of lines) {
     let v = l.p.variacaoSelecionada ? ` (${l.p.variacaoSelecionada.nome})` : '';
@@ -685,6 +758,81 @@ function showToast(msg) {
   t.textContent = msg; t.classList.add('show');
   clearTimeout(showToast._timer);
   showToast._timer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+// ===== Favoritos =====
+function updateFavBadge() {
+  const badge = document.getElementById('favBadge');
+  if (!badge) return;
+  const n = favorites.size;
+  badge.textContent = n;
+  badge.style.display = n > 0 ? 'flex' : 'none';
+}
+
+function openFavoritesModal() {
+  renderFavoritesList();
+  openModal('favoritesModal');
+}
+
+function renderFavoritesList() {
+  const list = document.getElementById('favoritesList');
+  if (!list) return;
+  const ids = [...favorites];
+  if (!ids.length) {
+    list.innerHTML = '<p class="cart-empty">Nenhum produto favoritado ainda.<br><small>Toque no ♥ de qualquer produto para salvar.</small></p>';
+    return;
+  }
+  const products = ids.map(id => findProduct(id)).filter(Boolean);
+  if (!products.length) {
+    list.innerHTML = '<p class="cart-empty">Nenhum produto favoritado ainda.</p>';
+    return;
+  }
+  list.innerHTML = products.map(p => {
+    const id = productId(p);
+    const foto = escapeHtml(p.foto || (p.fotos && p.fotos[0]) || '');
+    const disp = (p.disponivel||'').toLowerCase()==='sim';
+    const priceHtml = p.somenteAtacado
+      ? `<span class="price-a">R$ ${escapeHtml(p.atacado)}</span>`
+      : `Varejo R$ ${escapeHtml(p.varejo)} · Atacado R$ ${escapeHtml(p.atacado)}`;
+    return `<div class="cart-item">
+      <img src="${foto}" alt="" width="52" height="52" data-fallback="https://via.placeholder.com/52?text=?"/>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${escapeHtml(displayName(p.nome))}</div>
+        <div class="cart-item-meta">${escapeHtml(p.brand||'')} · ${escapeHtml(p.volume||'')} ${disp?'':' · <span class="stock-out">Esgotado</span>'}</div>
+        <div class="cart-item-price">${priceHtml}</div>
+        <div style="display:flex;gap:.35rem;margin-top:.35rem">
+          <button type="button" class="btn-sm btn-details" data-fav-open="${escapeHtml(id)}">Detalhes</button>
+          <button type="button" class="btn-sm btn-cart" data-fav-addcart="${escapeHtml(id)}">Carrinho</button>
+          <button type="button" class="btn-sm" style="background:#fee2e2;color:#b91c1c" data-fav-remove="${escapeHtml(id)}">Remover</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  list.querySelectorAll('[data-fav-open]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = findProduct(btn.dataset.favOpen);
+      if (!p) return;
+      closeModal('favoritesModal');
+      openDetails(p);
+    });
+  });
+  list.querySelectorAll('[data-fav-addcart]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = findProduct(btn.dataset.favAddcart);
+      if (p) { addToCart(p, 1); renderFavoritesList(); }
+    });
+  });
+  list.querySelectorAll('[data-fav-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      favorites.delete(btn.dataset.favRemove);
+      safeSet('fav_maquiagem', [...favorites]);
+      updateFavBadge();
+      const cardFav = document.querySelector(`[data-fav="${CSS.escape(btn.dataset.favRemove)}"]`);
+      if (cardFav) { cardFav.classList.remove('active'); cardFav.setAttribute('aria-pressed','false'); }
+      renderFavoritesList();
+    });
+  });
 }
 
 function initSwipeDetails() {
@@ -734,7 +882,6 @@ document.getElementById('tabs')?.addEventListener('click', e => {
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   btn.classList.add('active');
   currentLine = btn.dataset.line || 'all';
-  // Ofertas só na home (Todos); nas outras abas some a vitrine
   const dest = document.getElementById('destaquesHost');
   if (dest) dest.style.display = currentLine === 'all' ? '' : 'none';
   renderProducts(true);
@@ -745,6 +892,7 @@ document.getElementById('filterPreco')?.addEventListener('change', e => { filter
 document.getElementById('sortBy')?.addEventListener('change', e => { sortBy=e.target.value; renderProducts(true); });
 document.getElementById('btnLoadMore')?.addEventListener('click', () => { page+=1; renderProducts(false); });
 document.getElementById('btnOpenCart')?.addEventListener('click', openCart);
+document.getElementById('btnOpenFavorites')?.addEventListener('click', openFavoritesModal);
 document.getElementById('cartOverlay')?.addEventListener('click', closeCart);
 document.getElementById('btnCloseCart')?.addEventListener('click', closeCart);
 document.getElementById('buyQty')?.addEventListener('input', updateBuyPricePreview);
@@ -788,6 +936,7 @@ function openProductFromUrl() {
 }
 
 updateCartBadge();
+updateFavBadge();
 renderDestaques();
 renderProducts(true);
 initSwipeDetails();
