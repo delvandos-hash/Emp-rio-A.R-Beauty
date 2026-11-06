@@ -580,7 +580,8 @@ function updateBuyPricePreview() {
 
 function validateCheckout(nome, cep) {
   if (!(nome || '').trim() || nome.trim().length < 2) { showToast('Informe seu nome (mín. 2 letras).'); return false; }
-  if (!(cep || '').replace(/\D/g,'').length === 8) { showToast('CEP inválido (8 dígitos).'); return false; }
+  const digits = (cep || '').replace(/\D/g, '');
+  if (digits.length !== 8) { showToast('CEP inválido (8 dígitos).'); return false; }
   return true;
 }
 
@@ -609,7 +610,7 @@ function renderCart() {
   const { subtotal, totalItems, lines } = cartTotals();
   
   if (!lines.length) {
-    list.innerHTML = '<p class="cart-empty">Seu carrinho está vazio.</p>';
+    list.innerHTML = '<p class="cart-empty">Seu carrinho está vazio.<br><small>Adicione produtos pelo catálogo para enviar o pedido no WhatsApp.</small></p>';
     if (summary) summary.innerHTML = '';
     updateMobileCartBar(); return;
   }
@@ -696,7 +697,7 @@ function copyQuote() {
 
 
 function resetToHome(e) {
-  if (e) e.preventDefault();
+  if (e) { e.preventDefault(); e.stopPropagation(); }
   currentLine = 'all';
   searchTerm = '';
   filterDisp = 'all';
@@ -704,45 +705,44 @@ function resetToHome(e) {
   sortBy = 'default';
   filterMarca = 'all';
   page = 1;
-  const search = document.getElementById('searchInput');
-  if (search) search.value = '';
-  const fd = document.getElementById('filterDisponivel');
-  if (fd) fd.value = 'all';
-  const fp = document.getElementById('filterPreco');
-  if (fp) fp.value = 'all';
-  const sb = document.getElementById('sortBy');
-  if (sb) sb.value = 'default';
-  const fm = document.getElementById('filterMarca');
-  if (fm) fm.value = 'all';
-  document.querySelectorAll('#tabs .tab').forEach(tab => {
+  const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+  setVal('searchInput', '');
+  setVal('filterDisponivel', 'all');
+  setVal('filterPreco', 'all');
+  setVal('sortBy', 'default');
+  setVal('filterMarca', 'all');
+  document.querySelectorAll('#tabs .tab, .tab').forEach(tab => {
     tab.classList.toggle('active', (tab.dataset.line || 'all') === 'all');
   });
   try { saveFilters(); } catch (_) {}
-  closeCart();
+  try { closeCart(); } catch (_) {}
   try { closeModal('detailsModal'); } catch (_) {}
   try { closeModal('buyModal'); } catch (_) {}
   try { closeModal('checkoutModal'); } catch (_) {}
   try {
     const url = new URL(window.location.href);
     url.searchParams.delete('produto');
-    history.replaceState({}, '', url.pathname);
+    history.replaceState({}, '', url.pathname + (url.search || ''));
   } catch (_) {}
-  renderProducts(true);
+  const dest = document.getElementById('destaquesHost');
+  if (dest) dest.style.display = '';
+  try { populateBrands(); } catch (_) {}
   try { renderDestaques(); } catch (_) {}
-  // Volta ao topo de forma garantida (iOS + SPA)
+  try { renderProducts(true); } catch (_) {}
   const forceTop = () => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    try {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    } catch (_) {}
   };
   forceTop();
   requestAnimationFrame(() => {
     forceTop();
     setTimeout(forceTop, 50);
-    setTimeout(forceTop, 150);
+    setTimeout(forceTop, 200);
   });
 }
-
 function openCart() { renderCart(); document.getElementById('cartOverlay')?.classList.add('open'); document.getElementById('cartPanel')?.classList.add('open'); document.getElementById('cartPanel')?.setAttribute('aria-hidden','false'); document.body.classList.add('cart-open'); document.body.style.overflow = 'hidden'; }
 function closeCart() { document.getElementById('cartOverlay')?.classList.remove('open'); document.getElementById('cartPanel')?.classList.remove('open'); document.getElementById('cartPanel')?.setAttribute('aria-hidden','true'); if (!document.querySelector('.modal.open')) document.body.classList.remove('cart-open'); document.body.style.overflow = ''; }
 
@@ -914,17 +914,56 @@ async function shareProduct(p) {
 
 // CEP
 function setupCepAutoFill(inputId, nameId, statusId) {
-  const input = document.getElementById(inputId); if (!input) return;
-  input.addEventListener('blur', async () => {
-    const cep = input.value.replace(/\D/g,''); if (cep.length !== 8) return;
-    const status = document.getElementById(statusId); if (status) status.textContent = 'Buscando CEP...';
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  let lastCep = '';
+  let timer = null;
+
+  const lookup = async () => {
+    const raw = input.value || '';
+    const cep = raw.replace(/\D/g, '');
+    // máscara leve 00000-000
+    if (cep.length > 5) {
+      const masked = cep.slice(0, 5) + '-' + cep.slice(5, 8);
+      if (raw.replace(/\D/g, '') === cep && raw !== masked && cep.length <= 8) {
+        const sel = input.selectionStart;
+        input.value = masked;
+      }
+    }
+    if (cep.length !== 8) {
+      const status = document.getElementById(statusId);
+      if (status && cep.length > 0 && cep.length < 8) status.textContent = '';
+      return;
+    }
+    if (cep === lastCep) return;
+    lastCep = cep;
+    const status = document.getElementById(statusId);
+    if (status) status.textContent = 'Buscando CEP...';
     try {
-      const res = await fetch(`https://viacep.com.br/ws/${cep}/json/`); const data = await res.json();
-      if (data.erro) { if (status) status.textContent = 'CEP não encontrado.'; return; }
-      if (status) status.textContent = `${data.localidade} - ${data.uf}`;
-      saveBuyMeta(document.getElementById(nameId)?.value || loadBuyMeta().nome, input.value, data.localidade, data.uf);
-    } catch { if (status) status.textContent = 'Falha ao buscar CEP.'; }
+      const res = await fetch('https://viacep.com.br/ws/' + cep + '/json/');
+      const data = await res.json();
+      if (data.erro) {
+        if (status) status.textContent = 'CEP não encontrado.';
+        return;
+      }
+      if (status) status.textContent = (data.localidade || '') + ' - ' + (data.uf || '');
+      saveBuyMeta(
+        document.getElementById(nameId)?.value || loadBuyMeta().nome,
+        input.value,
+        data.localidade || '',
+        data.uf || ''
+      );
+    } catch (_) {
+      if (status) status.textContent = 'Falha ao buscar CEP.';
+      lastCep = '';
+    }
+  };
+
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(lookup, 280);
   });
+  input.addEventListener('blur', lookup);
 }
 
 // PWA
@@ -1035,26 +1074,20 @@ function bindGlobalEvents() {
     btnBackToTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: 'smooth' }));
   }
 
-  // RESET DE FILTROS NA LOGO
-  document.querySelector('.brand')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    currentLine = 'all'; searchTerm = ''; filterDisp = 'all'; filterPreco = 'all'; filterMarca = 'all'; sortBy = 'default'; page = 1;
-    safeSet('emporio_filters', { line: 'all', search: '', marca: 'all' });
-    document.getElementById('searchInput').value = '';
-    document.getElementById('filterMarca').value = 'all';
-    document.getElementById('filterDisponivel').value = 'all';
-    document.getElementById('filterPreco').value = 'all';
-    document.getElementById('sortBy').value = 'default';
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelector('.tab[data-line="all"]')?.classList.add('active');
-    document.getElementById('destaquesHost').style.display = '';
-    populateBrands();
-    renderProducts(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  });
+  // Logo: bindLogoHome() no final do arquivo
 }
 
 // Iniciar
 init();
 
-document.getElementById('brandHome')?.addEventListener('click', resetToHome);
+
+function bindLogoHome() {
+  const logo = document.getElementById('brandHome') || document.querySelector('a.brand, .brand');
+  if (!logo || logo.dataset.boundHome === '1') return;
+  logo.dataset.boundHome = '1';
+  const handler = (e) => { e.preventDefault(); e.stopPropagation(); resetToHome(e); };
+  logo.addEventListener('click', handler, { passive: false });
+  logo.addEventListener('touchend', (e) => { e.preventDefault(); resetToHome(e); }, { passive: false });
+}
+bindLogoHome();
+
