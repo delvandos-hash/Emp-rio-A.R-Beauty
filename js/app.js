@@ -825,90 +825,267 @@ function addAllFavoritesToCart() {
   if (added) { showToast(`${added} item(ns) adicionado(s) ao carrinho`); renderFavoritesList(); } else { showToast('Nenhum favorito disponível.'); }
 }
 
-// Compartilhar (com geração de imagem)
-async function shareProduct(p) {
-  const url = new URL(window.location.href); url.searchParams.set('produto', productId(p)); url.hash = '';
-  const text = `Confira *${displayName(p.nome)}* no Empório A.R. Beauty!\nVarejo: R$ ${p.varejo || '—'}\nAtacado: R$ ${p.atacado || '—'}\n\n${url.toString()}`;
-  
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1080; canvas.height = 1920;
-    const ctx = canvas.getContext('2d');
-    
-    const grad = ctx.createLinearGradient(0, 0, 0, 1920);
-    grad.addColorStop(0, '#0f172a'); grad.addColorStop(0.5, '#14532d'); grad.addColorStop(1, '#052e16');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 1080, 1920);
-    
-    ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 44px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText('Empório A.R. Beauty', 540, 110);
-    
-    ctx.fillStyle = '#0c0a09'; ctx.fillRect(60, 150, 960, 1100);
-    
-    if (p.foto) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try { 
-          const scale = Math.max(960 / img.width, 1100 / img.height);
-          const w = img.width * scale, h = img.height * scale;
-          ctx.drawImage(img, 60 + (960 - w)/2, 150 + (1100 - h)/2, w, h);
-        } catch(e){}
-      };
-      img.src = p.foto;
-    } else {
-      ctx.fillStyle = '#9ca3af'; ctx.font = '36px system-ui';
-      ctx.fillText('Foto indisponível', 540, 700);
+// Compartilhar — imagem (Stories/Status) + WhatsApp conversa + nativo
+function productSharePayload(p) {
+  const url = new URL(window.location.href);
+  url.searchParams.set('produto', productId(p));
+  url.hash = '';
+  const link = url.toString();
+  const nome = displayName(p.nome);
+  const text =
+    `Confira *${nome}* no Empório A.R. Beauty!\n` +
+    (p.varejo ? `Varejo: R$ ${p.varejo}\n` : '') +
+    (p.atacado ? `Atacado: R$ ${p.atacado}\n` : '') +
+    `\n${link}`;
+  return { link, text, nome };
+}
+
+function closeShareSheet() {
+  document.getElementById('shareSheet')?.classList.remove('open');
+  document.getElementById('shareSheet')?.setAttribute('aria-hidden', 'true');
+}
+
+function openShareSheet(p) {
+  const { link, text, nome } = productSharePayload(p);
+  let sheet = document.getElementById('shareSheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'shareSheet';
+    sheet.className = 'share-sheet';
+    sheet.setAttribute('aria-hidden', 'true');
+    sheet.innerHTML = `
+      <div class="share-sheet-backdrop" data-share-close></div>
+      <div class="share-sheet-panel" role="dialog" aria-label="Compartilhar produto">
+        <div class="share-sheet-handle"></div>
+        <h3 class="share-sheet-title">Compartilhar</h3>
+        <p class="share-sheet-name" id="shareSheetName"></p>
+        <div class="share-sheet-actions">
+          <button type="button" class="share-opt" id="shareWaChat">
+            <span class="share-opt-icon">💬</span>
+            <span class="share-opt-txt"><strong>WhatsApp</strong><small>Enviar em uma conversa</small></span>
+          </button>
+          <button type="button" class="share-opt" id="shareWaStatus">
+            <span class="share-opt-icon">🟢</span>
+            <span class="share-opt-txt"><strong>Status do WhatsApp</strong><small>Salva imagem para colar no status</small></span>
+          </button>
+          <button type="button" class="share-opt" id="shareIgStory">
+            <span class="share-opt-icon">📸</span>
+            <span class="share-opt-txt"><strong>Stories / Instagram</strong><small>Salva imagem 1080×1920</small></span>
+          </button>
+          <button type="button" class="share-opt" id="shareNative">
+            <span class="share-opt-icon">📤</span>
+            <span class="share-opt-txt"><strong>Mais opções</strong><small>Compartilhar do sistema</small></span>
+          </button>
+          <button type="button" class="share-opt" id="shareCopy">
+            <span class="share-opt-icon">🔗</span>
+            <span class="share-opt-txt"><strong>Copiar link</strong><small>Texto + URL do produto</small></span>
+          </button>
+        </div>
+        <button type="button" class="share-sheet-cancel" data-share-close>Cancelar</button>
+      </div>`;
+    document.body.appendChild(sheet);
+    sheet.addEventListener('click', (e) => {
+      if (e.target.closest('[data-share-close]')) closeShareSheet();
+    });
+  }
+  const nameEl = document.getElementById('shareSheetName');
+  if (nameEl) nameEl.textContent = nome;
+
+  const bind = (id, fn) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.onclick = () => fn(p, text, link);
+  };
+
+  bind('shareWaChat', (_p, textMsg) => {
+    closeShareSheet();
+    window.open(`https://wa.me/?text=${encodeURIComponent(textMsg)}`, '_blank');
+  });
+
+  bind('shareWaStatus', async (prod) => {
+    closeShareSheet();
+    showToast('Gerando imagem do status…');
+    await downloadStoryImage(prod, 'status');
+  });
+
+  bind('shareIgStory', async (prod) => {
+    closeShareSheet();
+    showToast('Gerando imagem do story…');
+    await downloadStoryImage(prod, 'story');
+  });
+
+  bind('shareNative', async (prod, textMsg, linkMsg) => {
+    closeShareSheet();
+    try {
+      const file = await buildStoryFile(prod);
+      if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: displayName(prod.nome), text: textMsg });
+        return;
+      }
+      if (navigator.share) {
+        await navigator.share({ title: displayName(prod.nome), text: textMsg, url: linkMsg });
+        return;
+      }
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
     }
+    try {
+      await navigator.clipboard.writeText(textMsg);
+      showToast('Link copiado!');
+    } catch {
+      alert(textMsg);
+    }
+  });
 
-    setTimeout(() => {
-      ctx.fillStyle = '#fafaf9'; ctx.font = 'bold 46px system-ui';
-      const nomeTxt = displayName(p.nome);
-      const maxW = 900;
-      let words = nomeTxt.split(' '); let line = ''; let lines = [];
-      for (let w of words) {
-        let test = line ? line + ' ' + w : w;
-        if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else { line = test; }
-      }
-      if (line) lines.push(line);
-      lines.slice(0, 3).forEach((l, i) => ctx.fillText(l, 540, 1350 + i * 54));
-      
-      let ty = 1350 + Math.min(lines.length, 3) * 54 + 30;
-      ctx.fillStyle = '#d6d3d1'; ctx.font = '32px system-ui';
-      ctx.fillText(`${p.brand || ''} · ${p.volume || ''}`, 540, ty);
-      
-      ty += 60;
-      ctx.fillStyle = '#4ade80'; ctx.font = 'bold 52px system-ui';
-      if (p.varejo) ctx.fillText(`R$ ${p.varejo}`, 540, ty);
-      
-      if (p.atacado && p.atacado !== '—') {
-        ty += 55; ctx.fillStyle = '#86efac'; ctx.font = '36px system-ui';
-        ctx.fillText(`Atacado (6+) R$ ${p.atacado}`, 540, ty);
-      }
-      
-      ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = '28px system-ui';
-      ctx.fillText('Link na legenda · catalogoemporio.netlify.app', 540, 1850);
+  bind('shareCopy', async (_p, textMsg) => {
+    closeShareSheet();
+    try {
+      await navigator.clipboard.writeText(textMsg);
+      showToast('Link copiado!');
+    } catch {
+      prompt('Copie o texto:', textMsg);
+    }
+  });
 
-      canvas.toBlob((blob) => {
-        if (!blob) { fallbackShare(text, url); return; }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `emporio-ar-${normId(p.nome)}-story.png`;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        alert('Imagem salva! Abra o Instagram ou WhatsApp, vá em Stories/Status e escolha esta imagem da galeria.');
-      }, 'image/png', 0.92);
-    }, 800);
+  sheet.classList.add('open');
+  sheet.setAttribute('aria-hidden', 'false');
+}
 
-  } catch (e) {
-    fallbackShare(text, url);
+function shareProduct(p) {
+  openShareSheet(p);
+}
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function renderStoryCanvas(p) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1080;
+  canvas.height = 1920;
+  const ctx = canvas.getContext('2d');
+
+  const grad = ctx.createLinearGradient(0, 0, 0, 1920);
+  grad.addColorStop(0, '#0f172a');
+  grad.addColorStop(0.5, '#14532d');
+  grad.addColorStop(1, '#052e16');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1080, 1920);
+
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 44px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Empório A.R. Beauty', 540, 110);
+
+  ctx.fillStyle = '#0c0a09';
+  ctx.fillRect(60, 150, 960, 1100);
+
+  const img = await loadImage(p.foto || (p.fotos && p.fotos[0]) || '');
+  if (img) {
+    try {
+      const scale = Math.max(960 / img.width, 1100 / img.height);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, 60 + (960 - w) / 2, 150 + (1100 - h) / 2, w, h);
+    } catch (_) {}
+  } else {
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '36px system-ui, sans-serif';
+    ctx.fillText('Foto indisponível', 540, 700);
   }
 
-  function fallbackShare(text, url) {
-    if (navigator.share) {
-      navigator.share({ title: displayName(p.nome), text: text, url: url.toString() }).catch(()=>{});
-    } else {
-      navigator.clipboard.writeText(text).then(()=>showToast('Link copiado!')).catch(()=>alert('Erro ao copiar.'));
+  ctx.fillStyle = '#fafaf9';
+  ctx.font = 'bold 46px system-ui, sans-serif';
+  const nomeTxt = displayName(p.nome);
+  const maxW = 900;
+  let words = nomeTxt.split(' ');
+  let line = '';
+  let lines = [];
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = w;
+    } else line = test;
+  }
+  if (line) lines.push(line);
+  lines.slice(0, 3).forEach((l, i) => ctx.fillText(l, 540, 1350 + i * 54));
+
+  let ty = 1350 + Math.min(lines.length, 3) * 54 + 30;
+  ctx.fillStyle = '#d6d3d1';
+  ctx.font = '32px system-ui, sans-serif';
+  ctx.fillText(`${p.brand || ''} · ${p.volume || ''}`, 540, ty);
+
+  ty += 60;
+  ctx.fillStyle = '#4ade80';
+  ctx.font = 'bold 52px system-ui, sans-serif';
+  if (p.varejo) ctx.fillText(`R$ ${p.varejo}`, 540, ty);
+  else if (p.atacado) ctx.fillText(`R$ ${p.atacado}`, 540, ty);
+
+  if (p.atacado && p.varejo) {
+    ty += 55;
+    ctx.fillStyle = '#86efac';
+    ctx.font = '36px system-ui, sans-serif';
+    ctx.fillText(`Atacado (6+) R$ ${p.atacado}`, 540, ty);
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.font = '28px system-ui, sans-serif';
+  ctx.fillText('Empório A.R. Beauty · link na legenda', 540, 1850);
+
+  return canvas;
+}
+
+async function buildStoryFile(p) {
+  const canvas = await renderStoryCanvas(p);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.92));
+  if (!blob) return null;
+  return new File([blob], `emporio-ar-${normId(p.nome)}-story.png`, { type: 'image/png' });
+}
+
+async function downloadStoryImage(p, mode) {
+  try {
+    const file = await buildStoryFile(p);
+    if (!file) {
+      showToast('Não foi possível gerar a imagem');
+      return;
     }
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: displayName(p.nome),
+          text: mode === 'status'
+            ? 'Status WhatsApp — Empório A.R. Beauty'
+            : 'Story — Empório A.R. Beauty',
+        });
+        return;
+      } catch (e) {
+        if (e && e.name === 'AbortError') return;
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2500);
+    if (mode === 'status') {
+      alert('Imagem salva na galeria.\\n\\nAbra o WhatsApp → Status → selecionar esta imagem e publicar.');
+    } else {
+      alert('Imagem salva na galeria.\\n\\nAbra o Instagram → Stories (ou WhatsApp Status) e escolha esta imagem.');
+    }
+  } catch (e) {
+    console.warn(e);
+    showToast('Falha ao gerar imagem');
   }
 }
 
@@ -1056,5 +1233,124 @@ function bindGlobalEvents() {
 
 // Iniciar
 init();
+
+
+/** Temas comemorativos BR (mesmo padrão do catálogo de perfumes)
+ * Ativo de 3 dias antes até 2 dias depois de cada data (salvo override).
+ */
+const SEASONAL_THEMES = [
+  { id: 'ano-novo', month: 1, day: 1, label: '✨ Feliz Ano Novo no Empório A.R. Beauty!', emoji: '✨' },
+  { id: 'carnaval', month: 2, day: 17, label: '🎭 Carnaval no Empório A.R. Beauty!', emoji: '🎭' },
+  { id: 'mulheres', month: 3, day: 8, label: '💐 Dia Internacional da Mulher — Empório A.R. Beauty', emoji: '💐' },
+  { id: 'consumidor', month: 3, day: 15, label: '🛍️ Dia do Consumidor — condições especiais no Empório A.R. Beauty', emoji: '🛍️' },
+  { id: 'pascoa', month: 4, day: 5, label: '🐰 Feliz Páscoa no Empório A.R. Beauty!', emoji: '🐰' },
+  { id: 'tiradentes', month: 4, day: 21, label: '🇧🇷 Tiradentes — Empório A.R. Beauty', emoji: '🇧🇷' },
+  { id: 'trabalho', month: 5, day: 1, label: '⚒️ Dia do Trabalho — ofertas no Empório A.R. Beauty', emoji: '⚒️' },
+  { id: 'maes', month: 5, day: 10, label: '💝 Dia das Mães — o presente perfeito no Empório A.R. Beauty', emoji: '💝' },
+  { id: 'namorados', month: 6, day: 12, label: '💕 Dia dos Namorados — Empório A.R. Beauty', emoji: '💕' },
+  { id: 'sao-joao', month: 6, day: 24, label: '🌽 São João no Empório A.R. Beauty!', emoji: '🌽' },
+  { id: 'amigos', month: 7, day: 20, label: '🤝 Dia do Amigo — Empório A.R. Beauty', emoji: '🤝' },
+  { id: 'pais', month: 8, day: 9, label: '👔 Dia dos Pais — Empório A.R. Beauty', emoji: '👔' },
+  { id: 'independencia', month: 9, day: 7, label: '🇧🇷 Independência do Brasil — Empório A.R. Beauty', emoji: '🇧🇷' },
+  { id: 'cliente', month: 9, day: 15, label: '🌟 Dia do Cliente — obrigado por comprar no Empório A.R. Beauty!', emoji: '🌟' },
+  { id: 'criancas', month: 10, day: 12, label: '🎈 Dia das Crianças — Empório A.R. Beauty', emoji: '🎈' },
+  { id: 'professores', month: 10, day: 15, label: '📚 Dia dos Professores — Empório A.R. Beauty', emoji: '📚' },
+  { id: 'outubro-rosa', month: 10, day: 15, daysBefore: 14, daysAfter: 16, label: '🩷 Outubro Rosa — Empório A.R. Beauty apoia esta causa', emoji: '🩷' },
+  { id: 'halloween', month: 10, day: 31, daysBefore: 3, daysAfter: 1, label: '🎃 Halloween no Empório A.R. Beauty — ofertas especiais!', emoji: '🎃' },
+  { id: 'finados', month: 11, day: 2, daysBefore: 0, daysAfter: 0, label: '🕯️ Finados — Empório A.R. Beauty', emoji: '🕯️' },
+  { id: 'republica', month: 11, day: 15, label: '🇧🇷 Proclamação da República — Empório A.R. Beauty', emoji: '🇧🇷' },
+  { id: 'consciencia-negra', month: 11, day: 20, label: '✊ Consciência Negra — Empório A.R. Beauty', emoji: '✊' },
+  { id: 'black-friday', month: 11, day: 27, label: '🖤 Black Friday no Empório A.R. Beauty — não perca!', emoji: '🖤' },
+  { id: 'cyber-monday', month: 11, day: 30, label: '💻 Cyber Monday no Empório A.R. Beauty!', emoji: '💻' },
+  { id: 'natal', month: 12, day: 25, daysBefore: 10, daysAfter: 2, label: '🎄 Feliz Natal no Empório A.R. Beauty!', emoji: '🎄' },
+  { id: 'vira-ano', month: 12, day: 31, daysBefore: 2, daysAfter: 1, label: '🎆 Réveillon — Empório A.R. Beauty!', emoji: '🎆' },
+];
+
+function brazilTodayParts() {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const [y, m, d] = fmt.format(new Date()).split('-').map(Number);
+  return { y, m, d };
+}
+
+function secondSunday(year, month) {
+  const first = new Date(Date.UTC(year, month - 1, 1));
+  const dow = first.getUTCDay();
+  const firstSun = dow === 0 ? 1 : 1 + (7 - dow);
+  return firstSun + 7;
+}
+
+function resolveThemeDate(theme, year) {
+  if (theme.id === 'maes') return { y: year, m: 5, d: secondSunday(year, 5) };
+  if (theme.id === 'pais') return { y: year, m: 8, d: secondSunday(year, 8) };
+  if (theme.id === 'black-friday') {
+    const first = new Date(Date.UTC(year, 10, 1));
+    const dow = first.getUTCDay();
+    const firstThu = dow <= 4 ? 1 + (4 - dow) : 1 + (11 - dow);
+    const fourthThu = firstThu + 21;
+    return { y: year, m: 11, d: fourthThu + 1 };
+  }
+  if (theme.id === 'cyber-monday') {
+    const bf = resolveThemeDate({ id: 'black-friday' }, year);
+    return { y: year, m: 11, d: bf.d + 3 };
+  }
+  return { y: year, m: theme.month, d: theme.day };
+}
+
+function daysBetween(a, b) {
+  const da = Date.UTC(a.y, a.m - 1, a.d);
+  const db = Date.UTC(b.y, b.m - 1, b.d);
+  return Math.round((db - da) / 86400000);
+}
+
+function getActiveSeasonalTheme() {
+  const today = brazilTodayParts();
+  let best = null;
+  let bestDist = 999;
+  for (const year of [today.y - 1, today.y, today.y + 1]) {
+    for (const theme of SEASONAL_THEMES) {
+      const event = resolveThemeDate(theme, year);
+      const delta = daysBetween(event, today);
+      const before = Number.isFinite(theme.daysBefore) ? theme.daysBefore : 3;
+      const after = Number.isFinite(theme.daysAfter) ? theme.daysAfter : 2;
+      if (delta >= -before && delta <= after) {
+        const dist = Math.abs(delta);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = theme;
+        }
+      }
+    }
+  }
+  return best;
+}
+
+function applySeasonalTheme() {
+  try {
+    [...document.body.classList].forEach((c) => {
+      if (c.startsWith('theme-')) document.body.classList.remove(c);
+    });
+    const theme = getActiveSeasonalTheme();
+    const ban = document.getElementById('seasonalBanner');
+    if (!theme) {
+      if (ban) {
+        ban.style.display = 'none';
+        ban.setAttribute('aria-hidden', 'true');
+      }
+      return;
+    }
+    document.body.classList.add('theme-' + theme.id);
+    if (theme.id === 'halloween') document.body.classList.add('theme-halloween');
+    if (ban) {
+      ban.style.display = '';
+      ban.setAttribute('aria-hidden', 'false');
+      ban.textContent = theme.label;
+      ban.className = 'seasonal-banner theme-banner-' + theme.id;
+    }
+  } catch (e) {
+    console.warn('seasonal theme', e);
+  }
+}
+
+applySeasonalTheme();
 
 document.getElementById('brandHome')?.addEventListener('click', resetToHome);
