@@ -310,12 +310,16 @@ async function processProduct(url, page, specialMaps = {}) {
 
       // Variações: fragrâncias MakiMakes (.grouping-text dentro de .jet-product-grouping)
       const vars = [];
-      document.querySelectorAll('.jet-product-grouping .grouping-text, .grouping-text').forEach(el => {
-        const nome = (el.textContent || '').trim();
+      document.querySelectorAll('.jet-product-grouping li, .jet-product-grouping .grouping-text').forEach(el => {
+        const textEl = el.matches?.('.grouping-text') ? el : el.querySelector?.('.grouping-text');
+        const nome = ((textEl || el).textContent || '').trim();
         if (!nome || nome.length > 40) return;
         if (/fragr[aâ]ncias? dispon[ií]veis|hidrata/i.test(nome)) return;
-        const link = el.closest('a')?.getAttribute('href') || '';
-        vars.push({ id: nome, nome, href: link, estoque: 10 });
+        const a = el.closest?.('a') || el.querySelector?.('a') || (el.tagName === 'A' ? el : null);
+        let href = a?.getAttribute?.('href') || '';
+        if (href && href.startsWith('/')) href = location.origin + href;
+        const img = a?.querySelector?.('img')?.src || el.querySelector?.('img')?.src || '';
+        vars.push({ id: nome, nome, href: href || undefined, foto: img || undefined, estoque: 10 });
       });
 
       document.querySelectorAll('select').forEach(sel => {
@@ -335,7 +339,14 @@ async function processProduct(url, page, specialMaps = {}) {
         const key = (v.nome || '').toLowerCase();
         if (!key || seen.has(key)) continue;
         seen.add(key);
-        unique.push({ id: v.id || v.nome, nome: v.nome, estoque: v.estoque ?? 10 });
+        const item = {
+          id: v.id || v.nome,
+          nome: v.nome,
+          estoque: v.estoque ?? 10
+        };
+        if (v.href) item.href = v.href;
+        if (v.foto) item.foto = v.foto;
+        unique.push(item);
       }
       return { desc, variacoes: unique.slice(0, 24) };
     });
@@ -389,6 +400,109 @@ async function processProduct(url, page, specialMaps = {}) {
   } catch (e) {
     return null;
   }
+}
+
+
+/** Normaliza URL/slug de produto MakiMakes */
+function productSlug(url) {
+  if (!url) return '';
+  try {
+    const u = String(url).split('?')[0].replace(/\/+$/, '');
+    const parts = u.split('/').filter(Boolean);
+    // .../slug/p
+    const idx = parts.lastIndexOf('p');
+    if (idx > 0) return parts[idx - 1].toLowerCase();
+    return (parts[parts.length - 1] || '').toLowerCase();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Preenche foto das variações:
+ * 1) mapa slug → foto dos produtos já raspados
+ * 2) fetch leve de og:image para hrefs ainda sem foto (ignora 404)
+ */
+async function resolveVariationPhotos(raw) {
+  const slugToFoto = new Map();
+  for (const r of raw) {
+    const foto = r?.internalItem?.foto || r?.publicItem?.foto || '';
+    const src = r?.internalItem?.sourceUrl || '';
+    const slug = productSlug(src);
+    if (slug && foto) slugToFoto.set(slug, foto);
+    // também indexa pelo próprio nome normalizado
+  }
+
+  const pending = [];
+  for (const r of raw) {
+    const items = [r.internalItem, r.publicItem];
+    for (const item of items) {
+      if (!item?.variacoes?.length) continue;
+      // foto da variação "atual" (sem href) = foto do produto
+      for (const v of item.variacoes) {
+        if (!v.foto && !v.href && item.foto) v.foto = item.foto;
+        if (!v.foto && v.href) {
+          const slug = productSlug(v.href);
+          if (slug && slugToFoto.has(slug)) v.foto = slugToFoto.get(slug);
+          else if (slug) pending.push({ v, href: v.href, slug });
+        }
+      }
+    }
+  }
+
+  // Fetch og:image só para slugs únicos pendentes (limite de segurança)
+  const uniquePending = [];
+  const seenSlug = new Set();
+  for (const p of pending) {
+    if (seenSlug.has(p.slug)) continue;
+    seenSlug.add(p.slug);
+    uniquePending.push(p);
+  }
+
+  const CONC = 5;
+  for (let i = 0; i < uniquePending.length; i += CONC) {
+    const batch = uniquePending.slice(i, i + CONC);
+    await Promise.all(batch.map(async ({ href, slug }) => {
+      try {
+        const res = await fetch(href, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EmpórioARBot/1.0)' },
+          redirect: 'follow'
+        });
+        if (!res.ok) return;
+        const html = await res.text();
+        const m =
+          html.match(/property="og:image"\s+content="([^"]+)"/i) ||
+          html.match(/content="([^"]+)"\s+property="og:image"/i) ||
+          html.match(/(https:\/\/makimakes\.jetassets\.com\.br\/produto\/[0-9]+-MAIN-[a-f0-9]+\.png)/i);
+        let foto = m ? m[1] : '';
+        if (foto && foto.startsWith('//')) foto = 'https:' + foto;
+        if (foto && /jetassets\.com\.br\/produto\//i.test(foto) && !/\/custom\/logo/i.test(foto)) {
+          slugToFoto.set(slug, foto);
+        }
+      } catch (_) {}
+    }));
+  }
+
+  // Segunda passagem: aplica o que o fetch resolveu
+  let filled = 0;
+  for (const r of raw) {
+    for (const item of [r.internalItem, r.publicItem]) {
+      if (!item?.variacoes?.length) continue;
+      for (const v of item.variacoes) {
+        if (!v.foto && v.href) {
+          const slug = productSlug(v.href);
+          if (slug && slugToFoto.has(slug)) {
+            v.foto = slugToFoto.get(slug);
+            filled++;
+          }
+        } else if (v.foto) {
+          filled++;
+        }
+      }
+    }
+  }
+  console.log(`🖼  Variações com foto resolvida: ${filled}`);
+  return raw;
 }
 
 function buildOutputs(raw, specialGroups) {
@@ -533,7 +647,10 @@ async function main() {
   await Promise.all(pages.map(p => worker(p)));
   await browser.close();
 
-  // 4. Gera saídas
+  // 4. Resolve fotos das variações (slug dos produtos + og:image)
+  await resolveVariationPhotos(results);
+
+  // 5. Gera saídas
   const { internal, public: publicOutput } = buildOutputs(results, SPECIAL_GROUPS);
 
   const dataDir = path.join(__dirname, '..', 'data');
@@ -572,7 +689,7 @@ async function main() {
   }
   console.log('✅ JSON público validado: sem basePrice / sourceUrl');
 
-  // 5. Atualiza Gist (se credenciais existirem)
+  // 6. Atualiza Gist (se credenciais existirem)
   const gistId = process.env.GIST_ID;
   const gistToken = process.env.GIST_TOKEN;
   if (gistId && gistToken) {
