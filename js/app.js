@@ -401,69 +401,6 @@ function renderProducts(resetPage=true) {
   bindCardEvents(container);
 }
 
-
-/** Foto da variação: campo foto, produto atual, ou busca no catálogo (marca + nome). */
-function resolveVariationPhoto(p, v) {
-  if (!v) return p?.foto || (p?.fotos && p.fotos[0]) || '';
-  if (v.foto) return v.foto;
-  const vNome = String(v.nome || '').trim().toUpperCase();
-  if (!vNome) return p?.foto || '';
-  // variação "atual" (mesmo aroma do card)
-  const pNome = String(p?.nome || '').toUpperCase();
-  if (pNome.includes(vNome) && p?.foto) return p.foto;
-  // busca no catálogo: mesma marca e nome contém a variação
-  const brand = p?.brand || '';
-  const pool = getAllProducts();
-  const hits = pool.filter(x => {
-    if (brand && x.brand && x.brand !== brand) return false;
-    const n = String(x.nome || '').toUpperCase();
-    return n.includes(vNome) && x.foto;
-  });
-  if (hits.length === 1) return hits[0].foto;
-  if (hits.length > 1) {
-    // prefere mesmo "tipo" (primeira palavra relevante do produto atual)
-    const tokens = pNome.split(/[\s\-|,]+/).filter(t => t.length > 3 && t !== vNome);
-    const scored = hits.map(h => {
-      const n = String(h.nome || '').toUpperCase();
-      let s = 0;
-      tokens.forEach(t => { if (n.includes(t)) s++; });
-      return { h, s };
-    }).sort((a, b) => b.s - a.s);
-    if (scored[0].s > 0) return scored[0].h.foto;
-    return hits[0].foto;
-  }
-  // tenta pelo slug do href se existir
-  if (v.href) {
-    try {
-      const slug = String(v.href).split('?')[0].replace(/\/+$/, '').split('/').filter(Boolean);
-      const s = (slug[slug.length - 1] === 'p' ? slug[slug.length - 2] : slug[slug.length - 1] || '').toLowerCase();
-      if (s) {
-        const bySlug = pool.find(x => String(x.foto || '').toLowerCase().includes(s) || String(x.nome || '').toLowerCase().includes(s.replace(/-/g, ' ')));
-        // better: match source not available; try name from slug
-        const nameFromSlug = s.replace(/-/g, ' ').toUpperCase();
-        const hit2 = pool.find(x => String(x.nome || '').toUpperCase().includes(vNome) && x.foto);
-        if (hit2) return hit2.foto;
-      }
-    } catch (_) {}
-  }
-  return p?.foto || '';
-}
-
-function applyDetailsPhoto(url, alt) {
-  const img = document.getElementById('detailsMainImg');
-  if (!img || !url) return;
-  if (img.src === url) return;
-  img.style.opacity = '0.4';
-  const next = new Image();
-  next.onload = () => {
-    img.src = url;
-    img.alt = alt || img.alt || '';
-    img.style.opacity = '1';
-  };
-  next.onerror = () => { img.style.opacity = '1'; };
-  next.src = url;
-}
-
 function buildVariacoesHtml(p) {
   const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
   if (!vars.length) return '';
@@ -501,19 +438,8 @@ function bindVariacaoSelector(p) {
     if (selected.size === 1) {
       const id = [...selected][0];
       const chip = box.querySelector(`[data-var-id="${CSS.escape(id)}"]`);
-      const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
-      const v = vars.find(x => String(x.id || x.nome) === id) || null;
-      p.variacaoSelecionada = chip
-        ? { id, nome: chip.getAttribute('data-var-nome') || (v && v.nome) || '', foto: v?.foto || '' }
-        : null;
-      const foto = resolveVariationPhoto(p, v || { nome: chip?.getAttribute('data-var-nome') });
-      if (foto) applyDetailsPhoto(foto, (v && v.nome) || displayName(p.nome));
-    } else {
-      p.variacaoSelecionada = null;
-      // restaura foto principal do produto
-      const base = p.foto || (p.fotos && p.fotos[0]) || '';
-      if (base) applyDetailsPhoto(base, displayName(p.nome));
-    }
+      p.variacaoSelecionada = chip ? { id, nome: chip.getAttribute('data-var-nome') || '' } : null;
+    } else { p.variacaoSelecionada = null; }
   };
 
   box.querySelectorAll('.var-chip:not([disabled])').forEach(btn => {
@@ -531,8 +457,7 @@ function bindVariacaoSelector(p) {
     selected.forEach(id => {
       const v = vars.find(x => String(x.id || x.nome) === id);
       if (!v) return;
-      const fotoVar = resolveVariationPhoto(p, v);
-      const clone = { ...p, foto: fotoVar || p.foto, fotos: fotoVar ? [fotoVar] : p.fotos, variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || ''), foto: fotoVar || '' } };
+      const clone = { ...p, variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || '') } };
       addToCart(clone, 1); added++;
     });
     if (added) { showToast(`${added} opção(ões) adicionada(s) ao carrinho`); selected.clear(); refresh(); }
@@ -543,13 +468,6 @@ function bindVariacaoSelector(p) {
 function openDetails(p, opts={}) {
   if (!opts.fromNav) { detailsScrollY = window.scrollY || 0; detailsNavList = detailsNavList.length ? detailsNavList : sortProducts(getAllProducts().filter(matchesFilters)); detailsNavIndex = Math.max(0, detailsNavList.findIndex(x => productId(x)===productId(p))); }
   currentProduct = p; p.variacaoSelecionada = null;
-  // Enriquecer variações com foto resolvida (catálogo local / campo foto)
-  if (Array.isArray(p.variacoes)) {
-    p.variacoes = p.variacoes.map(v => {
-      const foto = resolveVariationPhoto(p, v);
-      return foto && !v.foto ? { ...v, foto } : v;
-    });
-  }
   const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.foto ? [p.foto] : []);
   const mainFoto = escapeHtml(fotos[0]||'');
   const desc = escapeHtml(decodeHtml(p.notas||'').trim() || 'Sem descrição adicional.');
