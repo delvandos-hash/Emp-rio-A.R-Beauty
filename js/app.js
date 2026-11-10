@@ -145,13 +145,35 @@ function findProduct(id) { return getAllProducts().find(p => productId(p) === id
 
 function isLojas10(p) { const b = (p.badge || '').toUpperCase(); const d = (p.destaque || '').toLowerCase(); return b.includes('LOJAS') || b.includes('R$10') || d === 'lojas10'; }
 function isOferta(p) { const b = (p.badge || '').toUpperCase(); const d = (p.destaque || '').toLowerCase(); return b.includes('OFERTA') || d === 'ofertaslimitadas' || d === 'ofertas'; }
-function isVitrineProduct(p) { return isLojas10(p) || isOferta(p); }
+function isBlackFriday(p) {
+  const b = (p.badge || '').toUpperCase();
+  const d = (p.destaque || '').toLowerCase();
+  return b.includes('BLACK') || d === 'blackfriday' || d === 'black-friday';
+}
+function isVitrineProduct(p) { return isLojas10(p) || isOferta(p) || isBlackFriday(p); }
+
+function defaultBadgeForKey(key) {
+  if (key === 'lojas10') return 'LOJAS R$10';
+  if (key === 'ofertasLimitadas') return 'OFERTA';
+  if (key === 'blackFriday') return 'BLACK FRIDAY';
+  return '';
+}
 
 function getDestaqueItems(key) {
   const fromDest = DESTAQUES[key]?.items || [];
-  if (fromDest.length) return fromDest.map(it => ({ ...it, brand: it.brand || '', cat: it.cat || '', line: it.line || 'outros', badge: it.badge || (key === 'lojas10' ? 'LOJAS R$10' : 'OFERTA'), destaque: it.destaque || key }));
+  if (fromDest.length) {
+    return fromDest.map(it => ({
+      ...it,
+      brand: it.brand || '',
+      cat: it.cat || '',
+      line: it.line || 'outros',
+      badge: it.badge || defaultBadgeForKey(key),
+      destaque: it.destaque || key
+    }));
+  }
   if (key === 'lojas10') return getAllProducts().filter(isLojas10);
   if (key === 'ofertasLimitadas') return getAllProducts().filter(isOferta);
+  if (key === 'blackFriday') return getAllProducts().filter(isBlackFriday);
   return [];
 }
 
@@ -270,19 +292,36 @@ function cartTotals() {
   return { subtotal, totalItems, lines };
 }
 
+/** Monta URL pública do produto no MakiMakes (sem expor custo). */
+function resolveProductPageUrl(p) {
+  if (p && p.sourceUrl) {
+    try {
+      const u = new URL(p.sourceUrl);
+      if (u.hostname.endsWith('makimakesoficial.com.br') && u.pathname.includes('/p')) return u.toString();
+    } catch (_) {}
+  }
+  const path = (p && (p.path || p.slug || '')) ? String(p.path || p.slug).replace(/^\//, '') : '';
+  if (path && /\/p\/?$/.test(path)) {
+    return 'https://www.makimakesoficial.com.br/' + path.replace(/^\//, '');
+  }
+  return '';
+}
+
 async function checkLiveStock(p) {
-  const url = p.sourceUrl;
+  const url = resolveProductPageUrl(p);
   if (!url) return p.disponivel;
   const cached = stockCache.get(url);
-  if (cached && Date.now()-cached.ts < STOCK_CACHE_MS) return cached.disponivel;
+  if (cached && Date.now() - cached.ts < STOCK_CACHE_MS) return cached.disponivel;
   try {
-    const res = await fetch('/.netlify/functions/stock?url='+encodeURIComponent(url), { cache:'no-store' });
+    const res = await fetch('/.netlify/functions/stock?url=' + encodeURIComponent(url), { cache: 'no-store' });
     if (!res.ok) throw new Error('fn');
     const data = await res.json();
     const disponivel = data.disponivel || p.disponivel;
     stockCache.set(url, { disponivel, ts: Date.now() });
     return disponivel;
-  } catch { return p.disponivel; }
+  } catch (_) {
+    return p.disponivel;
+  }
 }
 
 function cardHtml(p) {
@@ -299,6 +338,7 @@ function cardHtml(p) {
   const eid = escapeHtml(id);
   let badgeHtml = '';
   if (badge.includes('LOJAS') || badge.includes('R$10')) badgeHtml = '<span class="badge-novo" style="background:#0d9488">R$10</span>';
+  else if (badge.includes('BLACK')) badgeHtml = '<span class="badge-novo" style="background:#111827">BLACK FRIDAY</span>';
   else if (badge.includes('OFERTA')) badgeHtml = '<span class="badge-novo" style="background:#ea580c">OFERTA</span>';
   else if (badge.includes('NOVO')) badgeHtml = '<span class="badge-novo">NOVO</span>';
   if (!disponivel) badgeHtml += '<span class="badge-esgotado">ESGOTADO</span>';
@@ -366,12 +406,21 @@ function bindCardEvents(root) {
 function renderDestaques() {
   const host = document.getElementById('destaquesHost');
   if (!host) return;
+  let html = '';
+
+  // Black Friday (prioridade visual no topo, mesmo padrão de carrossel das Ofertas)
+  const blackFriday = getDestaqueItems('blackFriday');
+  const titleBF = DESTAQUES.blackFriday?.title || 'Black Friday';
+  if (blackFriday.length) {
+    html += `<section class="vitrine-section" id="vitrineBlackFridaySection"><div class="vitrine-head"><h2>${escapeHtml(titleBF)}</h2></div><div class="vitrine-track" id="vitrineBlackFriday">${blackFriday.map(p => `<div class="vitrine-card">${cardHtml(p)}</div>`).join('')}</div></section>`;
+  }
+
   const ofertas = getDestaqueItems('ofertasLimitadas');
   const titleOfertas = DESTAQUES.ofertasLimitadas?.title || 'Ofertas por tempo limitado';
-  let html = '';
   if (ofertas.length) {
     html += `<section class="vitrine-section" id="vitrineOfertasSection"><div class="vitrine-head"><h2>${escapeHtml(titleOfertas)}</h2></div><div class="vitrine-track" id="vitrineOfertas">${ofertas.map(p => `<div class="vitrine-card">${cardHtml(p)}</div>`).join('')}</div></section>`;
   }
+
   host.innerHTML = html;
   if (html) bindCardEvents(host);
 }
