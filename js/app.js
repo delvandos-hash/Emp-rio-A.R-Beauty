@@ -401,6 +401,55 @@ function renderProducts(resetPage=true) {
   bindCardEvents(container);
 }
 
+
+/** Foto da variação: campo foto, produto atual, ou busca no catálogo (marca + nome). */
+function resolveVariationPhoto(p, v) {
+  if (!v) return p?.foto || (p?.fotos && p.fotos[0]) || '';
+  if (v.foto) return v.foto;
+  const vNome = String(v.nome || '').trim().toUpperCase();
+  if (!vNome) return p?.foto || '';
+  const pNome = String(p?.nome || '').toUpperCase();
+  if (pNome.includes(vNome) && p?.foto) return p.foto;
+  const brand = p?.brand || '';
+  const pool = getAllProducts();
+  const hits = pool.filter(x => {
+    if (brand && x.brand && x.brand !== brand) return false;
+    const n = String(x.nome || '').toUpperCase();
+    return n.includes(vNome) && x.foto;
+  });
+  if (hits.length === 1) return hits[0].foto;
+  if (hits.length > 1) {
+    const tokens = pNome.split(/[\s\-|,]+/).filter(t => t.length > 3 && t !== vNome);
+    const scored = hits.map(h => {
+      const n = String(h.nome || '').toUpperCase();
+      let s = 0;
+      tokens.forEach(t => { if (n.includes(t)) s++; });
+      return { h, s };
+    }).sort((a, b) => b.s - a.s);
+    if (scored[0].s > 0) return scored[0].h.foto;
+    return hits[0].foto;
+  }
+  return p?.foto || '';
+}
+
+function applyDetailsPhoto(url, alt) {
+  const img = document.getElementById('detailsMainImg');
+  if (!img || !url) return;
+  const abs = url;
+  // img.src is absolute; compare carefully
+  if (img.getAttribute('src') === abs || img.src === abs) return;
+  img.style.transition = 'opacity .15s';
+  img.style.opacity = '0.35';
+  const next = new Image();
+  next.onload = () => {
+    img.src = abs;
+    if (alt) img.alt = alt;
+    img.style.opacity = '1';
+  };
+  next.onerror = () => { img.style.opacity = '1'; };
+  next.src = abs;
+}
+
 function buildVariacoesHtml(p) {
   const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
   if (!vars.length) return '';
@@ -409,15 +458,45 @@ function buildVariacoesHtml(p) {
     const id = String(v.id || v.nome || '');
     const label = escapeHtml(v.nome || '—');
     const disabled = ok ? '' : ' disabled';
-    return `<button type="button" class="var-chip${ok?'':' var-chip-out'}" data-var-id="${id}" data-var-nome="${label}"${disabled} aria-pressed="false"><span class="var-chip-name">${label}</span></button>`;
+    const foto = resolveVariationPhoto(p, v);
+    const fotoAttr = foto ? ` data-var-foto="${escapeHtml(foto)}"` : '';
+    return `<button type="button" class="var-chip${ok?'':' var-chip-out'}" data-var-id="${escapeHtml(id)}" data-var-nome="${label}"${fotoAttr}${disabled} aria-pressed="false"><span class="var-chip-name">${label}</span></button>`;
   }).join('');
-  return `<div class="variacoes-box" id="variacoesBox"><strong>Escolha as opções (pode marcar várias)</strong><div class="var-chips">${chips}</div><p class="var-hint" id="varHint">Selecione uma ou mais opções disponíveis</p><button type="button" id="btnAddMulti" class="btn-add-multi" style="display:none">🛒 Adicionar <span id="multiCount">0</span> opção(ões) ao carrinho</button></div>`;
+  return `<div class="variacoes-box" id="variacoesBox"><strong>Escolha as opções (pode marcar várias)</strong><div class="var-chips">${chips}</div><p class="var-hint" id="varHint">Toque numa opção para ver a foto · pode marcar várias para o carrinho</p><button type="button" id="btnAddMulti" class="btn-add-multi" style="display:none">🛒 Adicionar <span id="multiCount">0</span> opção(ões) ao carrinho</button></div>`;
 }
 
 function bindVariacaoSelector(p) {
   const box = document.getElementById('variacoesBox');
   if (!box) return;
   const selected = new Set();
+  const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
+  let lastFocusedId = null; // última variação clicada (para foto), independente do multi-select
+
+  const findVar = (id) => vars.find(x => String(x.id || x.nome) === id) || null;
+
+  const showPhotoFor = (id) => {
+    if (!id) {
+      const base = p.foto || (p.fotos && p.fotos[0]) || '';
+      if (base) applyDetailsPhoto(base, displayName(p.nome));
+      return;
+    }
+    const v = findVar(id);
+    const chip = box.querySelector(`[data-var-id="${CSS.escape(id)}"]`);
+    const fromChip = chip?.getAttribute('data-var-foto') || '';
+    const foto = fromChip || resolveVariationPhoto(p, v || { nome: id });
+    const label = (v && v.nome) || chip?.getAttribute('data-var-nome') || id;
+    if (foto) {
+      applyDetailsPhoto(foto, label);
+    } else {
+      // sem foto da variação: mantém a atual e avisa
+      const hint = document.getElementById('varHint');
+      if (hint) {
+        hint.textContent = `${label}: foto não disponível no fornecedor`;
+        hint.classList.add('ok');
+      }
+    }
+  };
+
   const refresh = () => {
     const chips = box.querySelectorAll('.var-chip');
     chips.forEach(chip => {
@@ -432,42 +511,92 @@ function bindVariacaoSelector(p) {
     if (btn) btn.style.display = selected.size ? '' : 'none';
     if (count) count.textContent = selected.size;
     if (hint) {
-      if (selected.size) { hint.textContent = `${selected.size} opção(ões) selecionada(s)`; hint.classList.add('ok'); }
-      else { hint.textContent = 'Selecione uma ou mais opções disponíveis'; hint.classList.remove('ok'); }
+      if (selected.size) {
+        hint.textContent = `${selected.size} opção(ões) selecionada(s) · foto: última tocada`;
+        hint.classList.add('ok');
+      } else {
+        hint.textContent = 'Toque numa opção para ver a foto · pode marcar várias para o carrinho';
+        hint.classList.remove('ok');
+      }
     }
+    // Para compra direta: se só 1 selecionada, grava variacaoSelecionada
     if (selected.size === 1) {
       const id = [...selected][0];
-      const chip = box.querySelector(`[data-var-id="${CSS.escape(id)}"]`);
-      p.variacaoSelecionada = chip ? { id, nome: chip.getAttribute('data-var-nome') || '' } : null;
-    } else { p.variacaoSelecionada = null; }
+      const v = findVar(id);
+      p.variacaoSelecionada = {
+        id,
+        nome: (v && v.nome) || id,
+        foto: (v && v.foto) || resolveVariationPhoto(p, v || { nome: id }) || ''
+      };
+    } else if (selected.size === 0) {
+      p.variacaoSelecionada = null;
+    } else {
+      // várias: compra direta pede uma; multi vai pelo botão
+      p.variacaoSelecionada = null;
+    }
   };
 
   box.querySelectorAll('.var-chip:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-var-id');
-      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      // Multi-seleção: toggle
+      if (selected.has(id)) selected.delete(id);
+      else selected.add(id);
+      // Foto: sempre a da variação clicada (como site raiz ao abrir a URL da opção)
+      lastFocusedId = id;
+      showPhotoFor(id);
       refresh();
     });
   });
 
   document.getElementById('btnAddMulti')?.addEventListener('click', () => {
     if (!selected.size) return;
-    const vars = Array.isArray(p.variacoes) ? p.variacoes : [];
     let added = 0;
     selected.forEach(id => {
-      const v = vars.find(x => String(x.id || x.nome) === id);
+      const v = findVar(id);
       if (!v) return;
-      const clone = { ...p, variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || '') } };
-      addToCart(clone, 1); added++;
+      const fotoVar = resolveVariationPhoto(p, v);
+      const clone = {
+        ...p,
+        foto: fotoVar || p.foto,
+        fotos: fotoVar ? [fotoVar] : p.fotos,
+        variacaoSelecionada: { id: String(v.id || ''), nome: String(v.nome || ''), foto: fotoVar || '' }
+      };
+      addToCart(clone, 1);
+      added++;
     });
-    if (added) { showToast(`${added} opção(ões) adicionada(s) ao carrinho`); selected.clear(); refresh(); }
+    if (added) {
+      showToast(`${added} opção(ões) adicionada(s) ao carrinho`);
+      selected.clear();
+      lastFocusedId = null;
+      showPhotoFor(null);
+      refresh();
+    }
   });
+
+  // Pré-seleciona visualmente a variação do produto aberto (sem forçar multi)
+  const pNome = String(p.nome || '').toUpperCase();
+  const match = vars.find(v => {
+    const n = String(v.nome || '').toUpperCase();
+    return n && pNome.includes(n);
+  });
+  if (match) {
+    lastFocusedId = String(match.id || match.nome);
+    // não adiciona ao selected automaticamente — só alinha a foto
+    showPhotoFor(lastFocusedId);
+  }
   refresh();
 }
 
 function openDetails(p, opts={}) {
   if (!opts.fromNav) { detailsScrollY = window.scrollY || 0; detailsNavList = detailsNavList.length ? detailsNavList : sortProducts(getAllProducts().filter(matchesFilters)); detailsNavIndex = Math.max(0, detailsNavList.findIndex(x => productId(x)===productId(p))); }
   currentProduct = p; p.variacaoSelecionada = null;
+  if (Array.isArray(p.variacoes)) {
+    p.variacoes = p.variacoes.map(v => {
+      const foto = resolveVariationPhoto(p, v);
+      return foto && !v.foto ? { ...v, foto } : v;
+    });
+  }
   const fotos = (p.fotos && p.fotos.length) ? p.fotos : (p.foto ? [p.foto] : []);
   const mainFoto = escapeHtml(fotos[0]||'');
   const desc = escapeHtml(decodeHtml(p.notas||'').trim() || 'Sem descrição adicional.');
