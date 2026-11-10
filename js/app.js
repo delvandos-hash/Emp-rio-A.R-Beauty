@@ -1,12 +1,16 @@
 /**
- * Loader de teste — app multifoto (zlib+base64)
+ * Loader de teste — app multifoto (zlib+base64 em 3 partes)
  * branch: test/variacao-multifoto-v2
- * Após validar, fazer merge para main com o app.js expandido.
+ * Multi-seleção de variações + troca de foto ao clicar em cada uma.
  */
 async function loadApp() {
-  const res = await fetch('/js/app.compressed.b64', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Falha ao carregar app.compressed.b64: ' + res.status);
-  const b64 = (await res.text()).replace(/\s+/g, '');
+  const parts = await Promise.all(
+    [1,2,3].map(i => fetch('/js/app.b64.' + i + '.txt', { cache: 'no-store' }).then(r => {
+      if (!r.ok) throw new Error('Falha part ' + i + ': ' + r.status);
+      return r.text();
+    }))
+  );
+  const b64 = parts.join('').replace(/\s+/g, '');
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -19,7 +23,7 @@ async function loadApp() {
   await import(URL.createObjectURL(blob));
 }
 loadApp().catch((e) => {
-  console.error('[multifoto]', e);
+  console.error('[multifoto-v2]', e);
   const el = document.getElementById('bootStatus');
   if (el) {
     el.style.display = 'block';
