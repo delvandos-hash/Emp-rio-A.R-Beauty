@@ -1,44 +1,71 @@
 /**
  * Proxy de estoque ao vivo — allowlist de host.
+ * Aceita:
+ *   ?url=https://www.makimakesoficial.com.br/produto/p
+ *   ?path=produto/p
  * ESM (package.json type: module)
  */
 const ALLOWED_HOST = 'www.makimakesoficial.com.br';
+
+function normalizePath(path) {
+  let p = String(path || '').trim();
+  p = p.replace(/^https?:\/\/(www\.)?makimakesoficial\.com\.br\//i, '');
+  p = p.replace(/^\//, '').split('?')[0].split('#')[0];
+  p = p.replace(/\/+$/, '');
+  if (!p.endsWith('/p')) {
+    if (p.endsWith('/p/')) p = p.slice(0, -1);
+  }
+  return p;
+}
 
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Content-Type': 'application/json',
-    'Cache-Control': 'public, max-age=120'
+    'Cache-Control': 'public, max-age=60'
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers };
   }
 
-  let url = event.queryStringParameters?.url || '';
+  const qs = event.queryStringParameters || {};
+  let url = qs.url || '';
+  const pathParam = qs.path || qs.slug || '';
+
   try {
+    if (!url && pathParam) {
+      const path = normalizePath(pathParam);
+      if (!path.endsWith('/p')) {
+        return { statusCode: 400, headers, body: JSON.stringify({ error: 'path inválido (esperado .../p)' }) };
+      }
+      url = 'https://' + ALLOWED_HOST + '/' + path;
+    }
+
     const u = new URL(url);
-    if (u.hostname !== ALLOWED_HOST) {
+    if (u.hostname !== ALLOWED_HOST && u.hostname !== 'makimakesoficial.com.br') {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'host não permitido' }) };
     }
-    if (!u.pathname.endsWith('/p')) {
+    const path = normalizePath(u.pathname);
+    if (!path.endsWith('/p')) {
       return { statusCode: 400, headers, body: JSON.stringify({ error: 'path inválido' }) };
     }
-    url = u.toString();
+    url = 'https://' + ALLOWED_HOST + '/' + path;
   } catch {
     return { statusCode: 400, headers, body: JSON.stringify({ error: 'URL inválida' }) };
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 8000);
+  const timer = setTimeout(() => controller.abort(), 10000);
 
   try {
     const res = await fetch(url, {
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; EmpórioARBeauty/1.0)',
-        'Accept': 'text/html'
+        'User-Agent': 'Mozilla/5.0 (compatible; EmporioARBeauty/1.1; +https://emporioar-beauty.netlify.app)',
+        'Accept': 'text/html,application/xhtml+xml',
+        'Accept-Language': 'pt-BR,pt;q=0.9'
       }
     });
     clearTimeout(timer);
@@ -49,13 +76,17 @@ export async function handler(event) {
         body: JSON.stringify({ disponivel: null, source: 'http-error', status: res.status })
       };
     }
-    const html = (await res.text()).slice(0, 500000);
+    const html = (await res.text()).slice(0, 600000);
 
     let disponivel = null;
-    const m = html.match(/"availability"\s*:\s*"(https:\/\/schema\.org\/[^"]+)"/);
+    const m = html.match(/"availability"\s*:\s*"(https:\/\/schema\.org\/[^"]+)"/i);
     if (m) {
-      disponivel = m[1].includes('InStock') ? 'Sim' : 'Não';
-    } else if (/esgotado|indispon[ií]vel/i.test(html)) {
+      disponivel = /InStock/i.test(m[1]) ? 'Sim' : 'Não';
+    } else if (/itemprop=["']availability["'][^>]*content=["'][^"']*OutOfStock/i.test(html)) {
+      disponivel = 'Não';
+    } else if (/itemprop=["']availability["'][^>]*content=["'][^"']*InStock/i.test(html)) {
+      disponivel = 'Sim';
+    } else if (/esgotado|indispon[ií]vel/i.test(html) && !/adicionar ao carrinho/i.test(html)) {
       disponivel = 'Não';
     } else if (/adicionar ao carrinho|em estoque/i.test(html)) {
       disponivel = 'Sim';
@@ -64,7 +95,7 @@ export async function handler(event) {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ disponivel, source: 'live' })
+      body: JSON.stringify({ disponivel, source: 'live', url })
     };
   } catch (e) {
     clearTimeout(timer);
