@@ -1,11 +1,16 @@
 /**
- * Loader de teste — app multifoto (zlib+base64 em 1 arquivo)
+ * Loader teste multifoto — 3 partes zlib+base64
  * branch: test/variacao-multifoto
  */
 async function loadApp() {
-  const res = await fetch('/js/app.compressed.b64', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Falha ao carregar app.compressed.b64');
-  const b64 = (await res.text()).replace(/\s+/g, '');
+  const parts = ['c0', 'c1', 'c2'];
+  const pieces = [];
+  for (const p of parts) {
+    const res = await fetch('/js/app-parts/' + p + '.b64', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Falha ' + p);
+    pieces.push(await res.text());
+  }
+  const b64 = pieces.join('').replace(/\s+/g, '');
   const bin = atob(b64);
   const bytes = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
@@ -14,8 +19,7 @@ async function loadApp() {
   const ab = await new Response(stream).arrayBuffer();
   let src = new TextDecoder().decode(ab);
   src = src.replace(/from\s+['"]\.\/prices\.js['"]/, "from '/js/prices.js'");
-  const blob = new Blob([src], { type: 'text/javascript' });
-  await import(URL.createObjectURL(blob));
+  await import(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
 }
 loadApp().catch((e) => {
   console.error(e);
