@@ -3,6 +3,7 @@
  * Correções:
  *  - Paginação por URL (?pageNumber=N) — lê as 4 páginas de Lojas R$10
  *  - publicItem NUNCA contém basePrice nem sourceUrl
+ *  - publicItem PODE conter path (slug/p) para estoque ao vivo
  *  - Descrições (notas) e variações preservadas no JSON público
  *  - Copia automática do público para a raiz (catalogo.json)
  */
@@ -35,6 +36,8 @@ const PRICE_RULES = { varejoMarkup: 2.50, atacadoMarkup: 2.00 };
 const SPECIAL_PRICE_RULES = {
   lojas10:          { varejoMarkup: 1.80, atacadoMarkup: 1.50 },
   ofertasLimitadas: { varejoMarkup: 1.80, atacadoMarkup: 1.50 },
+  // Black Friday: mesmas regras de preço das vitrines promocionais já usadas no catálogo
+  blackFriday:      { varejoMarkup: 1.80, atacadoMarkup: 1.50 },
 };
 
 const SPECIAL_GROUPS = {
@@ -47,6 +50,11 @@ const SPECIAL_GROUPS = {
     url: 'https://www.makimakesoficial.com.br/ofertas-por-tempo-limitado/g',
     title: 'Ofertas por tempo limitado',
     ...SPECIAL_PRICE_RULES.ofertasLimitadas
+  },
+  blackFriday: {
+    url: 'https://www.makimakesoficial.com.br/black/g',
+    title: 'Black Friday',
+    ...SPECIAL_PRICE_RULES.blackFriday
   },
 };
 
@@ -268,7 +276,9 @@ async function processProduct(url, page, specialMaps = {}) {
     const isBox = /\b\d+\s*UN\b/i.test(name) || /\bbox\b/i.test(name) || /\bdisplay\b/i.test(name);
     const badge = specialKey === 'lojas10'
       ? 'LOJAS R$10'
-      : (specialKey === 'ofertasLimitadas' ? 'OFERTA' : '');
+      : (specialKey === 'ofertasLimitadas'
+        ? 'OFERTA'
+        : (specialKey === 'blackFriday' ? 'BLACK FRIDAY' : ''));
 
     // Descrição real do produto (NÃO capturar banner de desconto)
     // No MakiMakes:
@@ -367,6 +377,8 @@ async function processProduct(url, page, specialMaps = {}) {
     const variacoes = pageMeta.variacoes || [];
 
     const line = mapLine(category, name);
+    const productPath = normalizeSlug(url); // ex: "meu-produto/p" — sem custo, só rota pública
+
     const baseItem = {
       nome: name,
       volume,
@@ -380,7 +392,9 @@ async function processProduct(url, page, specialMaps = {}) {
       gtin: gtin || undefined,
       somenteAtacado: !!isBox,
       destaque: specialKey || null,
-      variacoes: variacoes.length > 0 ? variacoes : undefined
+      variacoes: variacoes.length > 0 ? variacoes : undefined,
+      // path público do produto no site raiz (para estoque ao vivo via function stock)
+      path: productPath || undefined
     };
 
     return {
@@ -394,7 +408,7 @@ async function processProduct(url, page, specialMaps = {}) {
         sourceUrl: url,
         basePrice: formatPrice(basePrice)
       },
-      // PÚBLICO: sem custo e sem origem
+      // PÚBLICO: sem custo; path liberado só para checagem de estoque
       publicItem: { ...baseItem }
     };
   } catch (e) {
@@ -508,8 +522,8 @@ async function resolveVariationPhotos(raw) {
 function buildOutputs(raw, specialGroups) {
   const groupsByLine = {};
   const brandsSet = new Set();
-  const destaquesInternal = { lojas10: [], ofertasLimitadas: [] };
-  const destaquesPublic = { lojas10: [], ofertasLimitadas: [] };
+  const destaquesInternal = { lojas10: [], ofertasLimitadas: [], blackFriday: [] };
+  const destaquesPublic = { lojas10: [], ofertasLimitadas: [], blackFriday: [] };
 
   for (const r of raw) {
     brandsSet.add(r.brand);
@@ -675,6 +689,7 @@ async function main() {
   console.log('Produtos marcados como vitrine (specialKey):', marked);
   console.log('Destaques Lojas R$10:', publicOutput.DESTAQUES.lojas10?.items?.length || 0);
   console.log('Destaques Ofertas:', publicOutput.DESTAQUES.ofertasLimitadas?.items?.length || 0);
+  console.log('Destaques Black Friday:', publicOutput.DESTAQUES.blackFriday?.items?.length || 0);
   console.log('Total produtos processados:', results.length);
   console.log('Arquivos gerados:');
   console.log('  data/catalogo.generated.json  (INTERNO — não publicar)');
