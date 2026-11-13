@@ -17,6 +17,94 @@ function normId(s) { return String(s||'').toLowerCase().normalize('NFD').replace
 function productId(p) { return `${normId(p.brand)}-${normId(p.nome)}-${normId(p.volume)}`; }
 function displayName(nome) { return String(nome||'').replace(/\s*\|\s*Atacado\s*$/i,'').trim(); }
 
+function productSlugBase(p) {
+  return [normId(p?.nome), normId(p?.brand), normId(p?.volume)].filter(Boolean).join('-') || productId(p);
+}
+let PRODUCT_SLUG_INDEX = { bySlug: new Map(), byPublicId: new Map(), byProductId: new Map() };
+function rebuildProductSlugIndex() {
+  const products = getAllProducts();
+  const counts = new Map();
+  for (const product of products) {
+    const base = productSlugBase(product);
+    counts.set(base, (counts.get(base) || 0) + 1);
+  }
+  const bySlug = new Map(), byPublicId = new Map(), byProductId = new Map();
+  for (const product of products) {
+    const base = productSlugBase(product);
+    const publicId = String(product.public_id || '').toLowerCase();
+    const suffix = normId(publicId).slice(-6) || normId(productId(product)).slice(-6);
+    const slug = counts.get(base) > 1 ? `${base}-${suffix || 'item'}` : base;
+    bySlug.set(slug, product);
+    if (publicId) byPublicId.set(publicId, { product, slug });
+    const legacyId = productId(product).toLowerCase();
+    if (legacyId && !byProductId.has(legacyId)) byProductId.set(legacyId, { product, slug });
+  }
+  PRODUCT_SLUG_INDEX = { bySlug, byPublicId, byProductId };
+}
+function productSlug(p) {
+  if (!p) return '';
+  const publicId = String(p.public_id || '').toLowerCase();
+  const indexed = publicId && PRODUCT_SLUG_INDEX.byPublicId.get(publicId);
+  if (indexed) return indexed.slug;
+  const legacy = PRODUCT_SLUG_INDEX.byProductId.get(productId(p).toLowerCase());
+  return legacy ? legacy.slug : productSlugBase(p);
+}
+function findProductById(id) {
+  if (!id) return null;
+  const want = String(id).toLowerCase();
+  const byPublicId = PRODUCT_SLUG_INDEX.byPublicId.get(want);
+  if (byPublicId) return byPublicId.product;
+  return PRODUCT_SLUG_INDEX.bySlug.get(want) || PRODUCT_SLUG_INDEX.byProductId.get(want)?.product || findProduct(want) || null;
+}
+function getProductShareUrl(p) {
+  const slug = productSlug(p);
+  if (slug) return window.location.origin + '/p/' + encodeURIComponent(slug);
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.set('produto', productId(p));
+    url.hash = '';
+    return url.toString();
+  } catch (e) {
+    return window.location.origin + '/?produto=' + encodeURIComponent(productId(p));
+  }
+}
+function getProductShareText(p) {
+  const link = getProductShareUrl(p);
+  let t = `*${displayName(p.nome)}* — Empório A.R. Beauty\n`;
+  if (p.brand) t += `Marca: ${p.brand}\n`;
+  if (p.volume && p.volume !== '—') t += `Volume: ${p.volume}\n`;
+  if (p.somenteAtacado) {
+    if (p.atacado) t += `Atacado: R$ ${p.atacado}\n`;
+  } else {
+    if (p.varejo) t += `Varejo: R$ ${p.varejo}\n`;
+    if (p.atacado && p.atacado !== '—') t += `Atacado (6+): R$ ${p.atacado}\n`;
+  }
+  t += `\n👉 Abra o produto no catálogo (link):\n${link}\n`;
+  t += `\nCatálogo completo: https://emporioar-beauty.netlify.app`;
+  return t;
+}
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (e) {}
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    return ok;
+  } catch (e) {
+    return false;
+  }
+}
+
 function unitPrice(p, itemQty, globalQty) {
   if (p.somenteAtacado) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
   if (globalQty >= 6) return { price: parsePrice(p.atacado), tipo: 'Atacado' };
@@ -55,7 +143,7 @@ function setSeo(title, desc, url, img) {
   document.getElementById('ogImage')?.setAttribute('content', img || CANONICAL_HOME + 'assets/logo.jpg');
 }
 function updateSeoForProduct(p) {
-  const url = window.location.href;
+  const url = getProductShareUrl(p);
   setSeo(displayName(p.nome) + ' | Empório A.R. Beauty', (decodeHtml(p.notas||'').slice(0, 150)) || displayName(p.nome), url, p.foto);
   if (preloadedImageLink) preloadedImageLink.remove();
   if (p.foto) {
@@ -103,6 +191,7 @@ async function init() {
   DESTAQUES = dados.DESTAQUES || {};
   WHATSAPP = dados.WHATSAPP || '5562991134488';
   allProductsCache = null;
+  rebuildProductSlugIndex();
 
   if (boot) boot.style.display = 'none';
   
@@ -126,6 +215,7 @@ async function init() {
   setupCepAutoFill('buyCep', 'buyNome', 'cepStatus');
   setupCepAutoFill('checkoutCep', 'checkoutNome', 'checkoutCepStatus');
   bindGlobalEvents();
+  bindShareSheetEvents();
 }
 
 function getAllProducts() {
@@ -640,6 +730,8 @@ function bindVariacaoSelector(p) {
 function openDetails(p, opts={}) {
   if (!opts.fromNav) { detailsScrollY = window.scrollY || 0; detailsNavList = detailsNavList.length ? detailsNavList : sortProducts(getAllProducts().filter(matchesFilters)); detailsNavIndex = Math.max(0, detailsNavList.findIndex(x => productId(x)===productId(p))); }
   currentProduct = p; p.variacaoSelecionada = null;
+  try { setProductUrl(p); } catch (_) {}
+  try { updateSeoForProduct(p); } catch (_) {}
   if (Array.isArray(p.variacoes)) {
     p.variacoes = p.variacoes.map(v => {
       const foto = resolveVariationPhoto(p, v);
@@ -1003,92 +1095,295 @@ function addAllFavoritesToCart() {
   if (added) { showToast(`${added} item(ns) adicionado(s) ao carrinho`); renderFavoritesList(); } else { showToast('Nenhum favorito disponível.'); }
 }
 
-// Compartilhar (com geração de imagem)
-async function shareProduct(p) {
-  const url = new URL(window.location.href); url.searchParams.set('produto', productId(p)); url.hash = '';
-  const text = `Confira *${displayName(p.nome)}* no Empório A.R. Beauty!\nVarejo: R$ ${p.varejo || '—'}\nAtacado: R$ ${p.atacado || '—'}\n\n${url.toString()}`;
-  
-  try {
-    const canvas = document.createElement('canvas');
-    canvas.width = 1080; canvas.height = 1920;
-    const ctx = canvas.getContext('2d');
-    
-    const grad = ctx.createLinearGradient(0, 0, 0, 1920);
-    grad.addColorStop(0, '#0f172a'); grad.addColorStop(0.5, '#14532d'); grad.addColorStop(1, '#052e16');
-    ctx.fillStyle = grad; ctx.fillRect(0, 0, 1080, 1920);
-    
-    ctx.fillStyle = '#fbbf24'; ctx.font = 'bold 44px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText('Empório A.R. Beauty', 540, 110);
-    
-    ctx.fillStyle = '#0c0a09'; ctx.fillRect(60, 150, 960, 1100);
-    
-    if (p.foto) {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try { 
-          const scale = Math.max(960 / img.width, 1100 / img.height);
-          const w = img.width * scale, h = img.height * scale;
-          ctx.drawImage(img, 60 + (960 - w)/2, 150 + (1100 - h)/2, w, h);
-        } catch(e){}
-      };
-      img.src = p.foto;
+
+function loadImageCors(src) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => {
+      const img2 = new Image();
+      img2.onload = () => resolve(img2);
+      img2.onerror = () => resolve(null);
+      img2.src = src;
+    };
+    const u = src.includes('?') ? src + '&share=1' : src + '?share=1';
+    img.src = u;
+  });
+}
+
+function drawImageCover(ctx, img, x, y, w, h) {
+  const ir = img.width / img.height;
+  const ar = w / h;
+  let sx = 0, sy = 0, sw = img.width, sh = img.height;
+  if (ir > ar) {
+    sw = img.height * ar;
+    sx = (img.width - sw) / 2;
+  } else {
+    sh = img.width / ar;
+    sy = (img.height - sh) / 2;
+  }
+  ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  const rr = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + rr, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rr);
+  ctx.arcTo(x + w, y + h, x, y + h, rr);
+  ctx.arcTo(x, y + h, x, y, rr);
+  ctx.arcTo(x, y, x + w, y, rr);
+  ctx.closePath();
+}
+
+function wrapText(ctx, text, maxWidth, maxLines) {
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxWidth && line) {
+      lines.push(line);
+      line = w;
+      if (lines.length >= maxLines) break;
     } else {
-      ctx.fillStyle = '#9ca3af'; ctx.font = '36px system-ui';
-      ctx.fillText('Foto indisponível', 540, 700);
+      line = test;
     }
+  }
+  if (line && lines.length < maxLines) lines.push(line);
+  if (lines.length === maxLines && words.length) {
+    let last = lines[maxLines - 1];
+    while (ctx.measureText(last + '…').width > maxWidth && last.length) last = last.slice(0, -1);
+    lines[maxLines - 1] = last + '…';
+  }
+  return lines;
+}
 
-    setTimeout(() => {
-      ctx.fillStyle = '#fafaf9'; ctx.font = 'bold 46px system-ui';
-      const nomeTxt = displayName(p.nome);
-      const maxW = 900;
-      let words = nomeTxt.split(' '); let line = ''; let lines = [];
-      for (let w of words) {
-        let test = line ? line + ' ' + w : w;
-        if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else { line = test; }
-      }
-      if (line) lines.push(line);
-      lines.slice(0, 3).forEach((l, i) => ctx.fillText(l, 540, 1350 + i * 54));
-      
-      let ty = 1350 + Math.min(lines.length, 3) * 54 + 30;
-      ctx.fillStyle = '#d6d3d1'; ctx.font = '32px system-ui';
-      ctx.fillText(`${p.brand || ''} · ${p.volume || ''}`, 540, ty);
-      
-      ty += 60;
-      ctx.fillStyle = '#4ade80'; ctx.font = 'bold 52px system-ui';
-      if (p.varejo) ctx.fillText(`R$ ${p.varejo}`, 540, ty);
-      
-      if (p.atacado && p.atacado !== '—') {
-        ty += 55; ctx.fillStyle = '#86efac'; ctx.font = '36px system-ui';
-        ctx.fillText(`Atacado (6+) R$ ${p.atacado}`, 540, ty);
-      }
-      
-      ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.font = '28px system-ui';
-      ctx.fillText('Link na legenda · catalogoemporio.netlify.app', 540, 1850);
+async function renderStoryCardCanvas(p) {
+  const W = 1080, H = 1920;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
 
-      canvas.toBlob((blob) => {
-        if (!blob) { fallbackShare(text, url); return; }
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `emporio-ar-${normId(p.nome)}-story.png`;
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-        alert('Imagem salva! Abra o Instagram ou WhatsApp, vá em Stories/Status e escolha esta imagem da galeria.');
-      }, 'image/png', 0.92);
-    }, 800);
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, '#0f172a');
+  grad.addColorStop(0.45, '#14532d');
+  grad.addColorStop(1, '#052e16');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
 
-  } catch (e) {
-    fallbackShare(text, url);
+  ctx.fillStyle = '#fbbf24';
+  ctx.font = 'bold 44px system-ui, -apple-system, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Empório A.R. Beauty', W / 2, 110);
+
+  const imgX = 60, imgY = 150, imgW = W - 120, imgH = 1100;
+  ctx.save();
+  ctx.fillStyle = '#0c0a09';
+  roundRect(ctx, imgX, imgY, imgW, imgH, 28);
+  ctx.fill();
+  roundRect(ctx, imgX, imgY, imgW, imgH, 28);
+  ctx.clip();
+  const img = await loadImageCors(p.foto || (p.fotos && p.fotos[0]) || '');
+  if (img && img.width) {
+    try { drawImageCover(ctx, img, imgX, imgY, imgW, imgH); } catch (e) {}
+  } else {
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '36px system-ui, sans-serif';
+    ctx.fillText('Foto indisponível', W / 2, imgY + imgH / 2);
+  }
+  ctx.restore();
+
+  let ty = imgY + imgH + 70;
+  ctx.fillStyle = '#fafaf9';
+  ctx.font = 'bold 46px system-ui, -apple-system, sans-serif';
+  const lines = wrapText(ctx, displayName(p.nome) || 'Produto', W - 120, 3);
+  lines.forEach((line, i) => ctx.fillText(line, W / 2, ty + i * 54));
+  ty += lines.length * 54 + 24;
+
+  const meta = [p.brand, p.volume && p.volume !== '—' ? p.volume : ''].filter(Boolean).join(' · ');
+  if (meta) {
+    ctx.fillStyle = '#d6d3d1';
+    ctx.font = '32px system-ui, sans-serif';
+    ctx.fillText(meta, W / 2, ty);
+    ty += 48;
   }
 
-  function fallbackShare(text, url) {
-    if (navigator.share) {
-      navigator.share({ title: displayName(p.nome), text: text, url: url.toString() }).catch(()=>{});
-    } else {
-      navigator.clipboard.writeText(text).then(()=>showToast('Link copiado!')).catch(()=>alert('Erro ao copiar.'));
+  if (p.somenteAtacado) {
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 52px system-ui, sans-serif';
+    if (p.atacado) ctx.fillText('Atacado R$ ' + p.atacado, W / 2, ty);
+  } else {
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 52px system-ui, sans-serif';
+    if (p.varejo) ctx.fillText('R$ ' + p.varejo, W / 2, ty);
+    ty += 50;
+    if (p.atacado && p.atacado !== '—') {
+      ctx.fillStyle = '#86efac';
+      ctx.font = '36px system-ui, sans-serif';
+      ctx.fillText('Atacado (6+): R$ ' + p.atacado, W / 2, ty);
     }
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.font = '28px system-ui, sans-serif';
+  ctx.fillText('Link na legenda · emporioar-beauty.netlify.app', W / 2, 1850);
+  return canvas;
+}
+
+async function buildStoryCardBlob(p) {
+  try {
+    if (!p) return null;
+    const canvas = await renderStoryCardCanvas(p);
+    return await new Promise((res) => canvas.toBlob(res, 'image/png', 0.92));
+  } catch (e) {
+    return null;
   }
 }
+
+async function downloadStoryCard(p) {
+  try {
+    const canvas = await renderStoryCardCanvas(p);
+    return await new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('Não foi possível gerar a imagem. Tente em outro aparelho.');
+          resolve(false);
+          return;
+        }
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `emporio-ar-beauty-${normId(p.nome) || 'produto'}-story.png`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        resolve(true);
+      }, 'image/png', 0.92);
+    });
+  } catch (e) {
+    alert('Erro ao gerar imagem do produto.');
+    return false;
+  }
+}
+
+function openShareSheet(p, url, text) {
+  const ov = document.getElementById('shareSheet');
+  if (!ov) {
+    copyText(url).then((ok) => alert(ok ? 'Link do produto copiado!' : url));
+    return;
+  }
+  currentProduct = p;
+  ov.dataset.url = url;
+  ov.dataset.text = text;
+  ov.classList.add('open');
+  ov.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeShareSheet() {
+  const ov = document.getElementById('shareSheet');
+  if (!ov) return;
+  ov.classList.remove('open');
+  ov.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+async function shareProduct(p) {
+  if (!p) return;
+  const url = getProductShareUrl(p);
+  const text = getProductShareText(p);
+  const title = `${displayName(p.nome)} · Empório A.R. Beauty`;
+
+  if (navigator.share) {
+    try {
+      try {
+        const blob = await buildStoryCardBlob(p);
+        if (blob) {
+          const file = new File([blob], 'emporio-ar-beauty-produto.png', { type: 'image/png' });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ title, text, url, files: [file] });
+            return;
+          }
+        }
+      } catch (e) {}
+      await navigator.share({ title, text, url });
+      return;
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+    }
+  }
+  openShareSheet(p, url, text);
+}
+
+function bindShareSheetEvents() {
+  document.getElementById('shareSheetClose')?.addEventListener('click', closeShareSheet);
+  document.getElementById('shareSheet')?.addEventListener('click', (e) => {
+    if (e.target.id === 'shareSheet') closeShareSheet();
+  });
+  document.getElementById('shareNative')?.addEventListener('click', async () => {
+    if (!currentProduct) return;
+    closeShareSheet();
+    const p = currentProduct;
+    const url = getProductShareUrl(p);
+    const text = getProductShareText(p);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${displayName(p.nome)} · Empório A.R. Beauty`, text, url });
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          alert('Não foi possível abrir o menu de compartilhar neste aparelho. Use copiar link ou baixar imagem.');
+        }
+      }
+    } else {
+      alert('Este navegador não oferece menu de compartilhar. Use copiar link ou baixar imagem.');
+    }
+  });
+  document.getElementById('shareWhatsApp')?.addEventListener('click', () => {
+    const ov = document.getElementById('shareSheet');
+    const text = ov?.dataset.text || '';
+    const opened = window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    closeShareSheet();
+    if (!opened) alert('O navegador bloqueou a abertura do WhatsApp. Permita pop-ups para este catálogo e tente novamente.');
+  });
+  document.getElementById('shareIgStory')?.addEventListener('click', async () => {
+    if (!currentProduct) return;
+    closeShareSheet();
+    const generated = await downloadStoryCard(currentProduct);
+    if (generated) alert('Imagem gerada. Abra o Instagram → Stories → Galeria e selecione a imagem do Empório A.R. Beauty.');
+  });
+  document.getElementById('shareWaStatus')?.addEventListener('click', async () => {
+    if (!currentProduct) return;
+    closeShareSheet();
+    const generated = await downloadStoryCard(currentProduct);
+    if (generated) alert('Imagem gerada. Abra o WhatsApp → Status → Galeria e selecione a imagem do Empório A.R. Beauty.');
+  });
+  document.getElementById('shareDownloadStory')?.addEventListener('click', async () => {
+    if (!currentProduct) return;
+    closeShareSheet();
+    alert('Gerando imagem para Stories/Status…');
+    const generated = await downloadStoryCard(currentProduct);
+    if (generated) alert('Imagem gerada. O download foi iniciado; abra a galeria para conferir o arquivo.');
+  });
+  document.getElementById('shareCopyLink')?.addEventListener('click', async () => {
+    const ov = document.getElementById('shareSheet');
+    const url = ov?.dataset.url || '';
+    const ok = await copyText(url);
+    alert(ok ? 'Link copiado! Cole no Instagram Stories ou Status do WhatsApp.' : 'Não foi possível copiar.');
+    closeShareSheet();
+  });
+  document.getElementById('shareCopyText')?.addEventListener('click', async () => {
+    const ov = document.getElementById('shareSheet');
+    const text = ov?.dataset.text || '';
+    const ok = await copyText(text);
+    alert(ok ? 'Texto + link copiados!' : 'Não foi possível copiar.');
+    closeShareSheet();
+  });
+}
+
 
 // CEP
 function setupCepAutoFill(inputId, nameId, statusId) {
@@ -1218,7 +1513,38 @@ function initSwipeDetails() {
 }
 
 function openProductFromUrl() {
-  try { const id = new URLSearchParams(window.location.search).get('produto'); if (!id) return; const p = findProduct(id); if (p) openDetails(p); } catch(_){}
+  try {
+    const pathMatch = window.location.pathname.match(/^\/p\/([^/]+)\/?$/);
+    const pathId = pathMatch ? decodeURIComponent(pathMatch[1]) : '';
+    const id = pathId || new URLSearchParams(window.location.search).get('produto');
+    if (!id) return false;
+    const p = findProductById(id);
+    if (p) {
+      openDetails(p);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+function setProductUrl(p) {
+  try {
+    const url = new URL(window.location.href);
+    if (p) {
+      const slug = productSlug(p);
+      if (slug) {
+        history.replaceState(history.state || {}, '', '/p/' + encodeURIComponent(slug));
+        return;
+      }
+      url.searchParams.set('produto', productId(p));
+    } else {
+      url.searchParams.delete('produto');
+      if (url.pathname.startsWith('/p/')) {
+        history.replaceState(history.state || {}, '', '/' + (url.search || ''));
+        return;
+      }
+    }
+    history.replaceState(history.state || {}, '', url.pathname + url.search + url.hash);
+  } catch (e) {}
 }
 
 function bindGlobalEvents() {
