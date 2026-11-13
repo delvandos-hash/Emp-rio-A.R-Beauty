@@ -6,6 +6,17 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+# Prévia social dinâmica: injeta título, descrição e foto do produto para crawlers.
+[[edge_functions]]
+  function = "product-share"
+  path = "/p/*"
+
+# Links curtos de produtos: a aplicação resolve /p/<slug> sem expor IDs longos.
+[[redirects]]
+  from = "/p/*"
+  to = "/index.html"
+  status = 200
+
 [[redirects]]
   from = "/feed.xml"
   to = "/.netlify/functions/feed"
@@ -31,7 +42,7 @@
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(), microphone=(), camera=()"
-    Content-Security-Policy = "default-src 'self'; img-src 'self' https://makimakes.jetassets.com.br https://via.placeholder.com data:; connect-src 'self' https://gist.githubusercontent.com https://raw.githubusercontent.com https://emporioar-beauty.netlify.app https://makimakes.jetassets.com.br https://viacep.com.br; script-src 'self' blob: https://plausible.io; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' https://makimakes.jetassets.com.br https://via.placeholder.com data: blob:; connect-src 'self' https://gist.githubusercontent.com https://raw.githubusercontent.com https://emporioar-beauty.netlify.app https://makimakes.jetassets.com.br https://viacep.com.br; script-src 'self' blob: https://plausible.io; style-src 'self' 'unsafe-inline'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
 
 [[headers]]
   for = "/js/*"
