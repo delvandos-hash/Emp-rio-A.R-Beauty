@@ -23,7 +23,13 @@
   <meta property="og:title" id="ogTitle" content="Empório A.R. Beauty | Catálogo de Maquiagem" />
   <meta property="og:description" id="ogDescription" content="Maquiagens com preço de varejo e atacado. Peça pelo WhatsApp." />
   <meta property="og:url" id="ogUrl" content="https://emporioar-beauty.netlify.app/" />
-  <meta name="twitter:card" content="summary_large_image" />
+  <meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="Empório A.R. Beauty — catálogo de maquiagem" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" id="twitterTitle" content="Empório A.R. Beauty | Catálogo de Maquiagem" />
+<meta name="twitter:description" id="twitterDescription" content="Catálogo de maquiagens Empório A.R. Beauty — varejo e atacado. Dúvidas pelo WhatsApp." />
+<meta name="twitter:image" id="twitterImage" content="https://emporioar-beauty.netlify.app/assets/logo.jpg" />
 <meta property="og:image" id="ogImage" content="https://emporioar-beauty.netlify.app/assets/logo.jpg" />
 
   <link rel="manifest" href="/manifest.webmanifest" />
@@ -305,6 +311,121 @@
 [data-theme="dark"] .share-sheet .share-opt:hover,
 .theme-dark .share-sheet .share-opt:hover { background: #374151; }
 
+
+  /* Faixa letreiro WhatsApp */
+  .top-ticker {
+    position: relative;
+    z-index: 40;
+    overflow: hidden;
+    background: #0a1628;
+    border-bottom: 1px solid rgba(251,191,36,0.35);
+    height: 34px;
+  }
+  .top-ticker-link {
+    display: block;
+    height: 34px;
+    color: #fef3c7;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .top-ticker-track {
+    display: inline-flex;
+    align-items: center;
+    height: 34px;
+    gap: 3rem;
+    padding-left: 100%;
+    animation: topTickerScroll 28s linear infinite;
+    will-change: transform;
+  }
+  .top-ticker-link:hover .top-ticker-track,
+  .top-ticker-link:active .top-ticker-track { animation-play-state: paused; }
+  .top-ticker-item {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: #fef3c7;
+  }
+  .top-ticker-item span { color: #fbbf24; }
+  @keyframes topTickerScroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .top-ticker-track {
+      animation: none;
+      padding-left: 0.75rem;
+      justify-content: center;
+      width: 100%;
+    }
+  }
+
+  /* Busca ao vivo */
+  .search { position: relative; }
+  .search-live-results {
+    position: absolute;
+    left: 0; right: 0;
+    top: calc(100% + 4px);
+    z-index: 50;
+    max-height: min(60vh, 360px);
+    overflow-y: auto;
+    background: #0f172a;
+    border: 1px solid rgba(251,191,36,0.35);
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.45);
+  }
+  .search-live-results[hidden] { display: none !important; }
+  .search-live-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    text-align: left;
+    width: 100%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+  }
+  .search-live-item:hover, .search-live-item:focus {
+    background: rgba(251,191,36,0.12);
+    outline: none;
+  }
+  .search-live-item img {
+    width: 44px; height: 44px;
+    object-fit: contain;
+    border-radius: 8px;
+    background: #fff;
+    flex-shrink: 0;
+  }
+  .search-live-meta { min-width: 0; flex: 1; }
+  .search-live-name {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #f8fafc;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .search-live-sub {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .search-live-price {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #4ade80;
+    flex-shrink: 0;
+  }
+  .search-live-empty {
+    padding: 0.85rem 1rem;
+    color: #94a3b8;
+    font-size: 0.85rem;
+  }
+
 </style>
   <script type="application/ld+json">
   {
@@ -347,7 +468,17 @@
     </div>
   </div>
 
-  <header>
+  <div class="top-ticker" role="region" aria-label="Aviso WhatsApp">
+  <a class="top-ticker-link" id="topTickerWa" href="https://wa.me/5562991134488?text=Ol%C3%A1!%20Vim%20pelo%20cat%C3%A1logo%20Beauty%20e%20tenho%20uma%20d%C3%BAvida." target="_blank" rel="noopener">
+    <div class="top-ticker-track">
+      <span class="top-ticker-item">Seja bem-vindo(a) à loja Empório A.R! Em caso de dúvidas, chame-nos no <span>WhatsApp</span>.</span>
+      <span class="top-ticker-item">Seja bem-vindo(a) à loja Empório A.R! Em caso de dúvidas, chame-nos no <span>WhatsApp</span>.</span>
+      <span class="top-ticker-item">Seja bem-vindo(a) à loja Empório A.R! Em caso de dúvidas, chame-nos no <span>WhatsApp</span>.</span>
+      <span class="top-ticker-item">Seja bem-vindo(a) à loja Empório A.R! Em caso de dúvidas, chame-nos no <span>WhatsApp</span>.</span>
+    </div>
+  </a>
+</div>
+<header>
     <a href="/" class="brand" id="brandHome" role="button" aria-label="Início — limpar filtros">
       <img src="assets/logo.jpg" alt="Logo" data-fallback="" />
       <div>
@@ -379,7 +510,8 @@
 
   <div class="toolbar">
     <div class="search">
-      <input type="search" id="searchInput" placeholder="Buscar por nome ou marca..." autocomplete="off" />
+      <input type="search" id="searchInput" placeholder="Buscar por nome ou marca..." autocomplete="off" enterkeyhint="search" />
+      <div id="searchLiveResults" class="search-live-results" hidden role="listbox" aria-label="Resultados da busca"></div>
     </div>
     <select class="filter-select" id="filterMarca">
       <option value="all">Todas as marcas</option>
