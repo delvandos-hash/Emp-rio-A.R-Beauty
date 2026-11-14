@@ -134,17 +134,27 @@ let detailsNavList = [], detailsNavIndex = 0, detailsScrollY = 0;
 let buyProduct = null, currentProduct = null, preloadedImageLink = null;
 
 function setSeo(title, desc, url, img) {
+  const image = img || (CANONICAL_HOME + 'assets/logo.jpg');
   document.title = title;
   document.getElementById('metaDescription')?.setAttribute('content', desc);
   document.getElementById('canonicalLink')?.setAttribute('href', url);
   document.getElementById('ogTitle')?.setAttribute('content', title);
   document.getElementById('ogDescription')?.setAttribute('content', desc);
   document.getElementById('ogUrl')?.setAttribute('content', url);
-  document.getElementById('ogImage')?.setAttribute('content', img || CANONICAL_HOME + 'assets/logo.jpg');
+  document.getElementById('ogImage')?.setAttribute('content', image);
+  document.getElementById('twitterTitle')?.setAttribute('content', title);
+  document.getElementById('twitterDescription')?.setAttribute('content', desc);
+  document.getElementById('twitterImage')?.setAttribute('content', image);
 }
 function updateSeoForProduct(p) {
   const url = getProductShareUrl(p);
-  setSeo(displayName(p.nome) + ' | Empório A.R. Beauty', (decodeHtml(p.notas||'').slice(0, 150)) || displayName(p.nome), url, p.foto);
+  const priceBit = p.somenteAtacado
+    ? (p.atacado ? `Atacado R$ ${p.atacado}` : '')
+    : (p.varejo ? `R$ ${p.varejo}` : (p.atacado ? `Atacado R$ ${p.atacado}` : ''));
+  const title = [displayName(p.nome), priceBit, 'Empório A.R. Beauty'].filter(Boolean).join(' · ');
+  const desc = (decodeHtml(p.notas || '').slice(0, 150))
+    || `${displayName(p.nome)}${p.brand ? ' — ' + p.brand : ''}. Varejo e atacado. Peça pelo WhatsApp.`;
+  setSeo(title, desc, url, p.foto || (p.fotos && p.fotos[0]) || '');
   if (preloadedImageLink) preloadedImageLink.remove();
   if (p.foto) {
     preloadedImageLink = document.createElement('link');
@@ -1127,6 +1137,24 @@ function drawImageCover(ctx, img, x, y, w, h) {
   ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
+function drawImageContain(ctx, img, x, y, w, h) {
+  if (!img || !img.width) return;
+  const ir = img.width / img.height;
+  const ar = w / h;
+  let dw = w, dh = h, dx = x, dy = y;
+  if (ir > ar) {
+    dw = w;
+    dh = w / ir;
+    dy = y + (h - dh) / 2;
+  } else {
+    dh = h;
+    dw = h * ir;
+    dx = x + (w - dw) / 2;
+  }
+  ctx.drawImage(img, dx, dy, dw, dh);
+}
+
+
 function roundRect(ctx, x, y, w, h, r) {
   const rr = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
@@ -1182,14 +1210,16 @@ async function renderStoryCardCanvas(p) {
 
   const imgX = 60, imgY = 150, imgW = W - 120, imgH = 1100;
   ctx.save();
-  ctx.fillStyle = '#0c0a09';
+  ctx.fillStyle = '#f5f2eb';
   roundRect(ctx, imgX, imgY, imgW, imgH, 28);
   ctx.fill();
   roundRect(ctx, imgX, imgY, imgW, imgH, 28);
   ctx.clip();
   const img = await loadImageCors(p.foto || (p.fotos && p.fotos[0]) || '');
   if (img && img.width) {
-    try { drawImageCover(ctx, img, imgX, imgY, imgW, imgH); } catch (e) {}
+    // contain: foto inteira sem corte
+    try { drawImageContain(ctx, img, imgX, imgY, imgW, imgH); }
+    catch (e) { try { drawImageCover(ctx, img, imgX, imgY, imgW, imgH); } catch (e2) {} }
   } else {
     ctx.fillStyle = '#9ca3af';
     ctx.font = '36px system-ui, sans-serif';
@@ -1228,9 +1258,35 @@ async function renderStoryCardCanvas(p) {
     }
   }
 
+  // logo circular discreta, centralizada, rente ao rodapé
+  try {
+    const logoSrc = (window.location && window.location.origin ? window.location.origin : '') + '/assets/logo.jpg';
+    const logo = await loadImageCors(logoSrc);
+    if (logo && logo.width) {
+      const size = 96;
+      const lx = (W - size) / 2;
+      const ly = H - 118 - size;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(lx + size / 2, ly + size / 2, size / 2, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(lx, ly, size, size);
+      drawImageContain(ctx, logo, lx, ly, size, size);
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(lx + size / 2, ly + size / 2, size / 2 - 1, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(251,191,36,0.75)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  } catch (e) {}
+
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.font = '28px system-ui, sans-serif';
-  ctx.fillText('Link na legenda · emporioar-beauty.netlify.app', W / 2, 1850);
+  ctx.font = '26px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('emporioar-beauty.netlify.app', W / 2, H - 78);
   return canvas;
 }
 
@@ -1547,6 +1603,72 @@ function setProductUrl(p) {
   } catch (e) {}
 }
 
+
+function escapeHtmlLive(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function productMatchesLiveQuery(p, q) {
+  if (!q) return false;
+  const n = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const qq = n(q);
+  return [p.nome, p.brand, p.cat, p.volume, p.notas].some((f) => n(f).includes(qq));
+}
+
+function hideSearchLiveResults() {
+  const box = document.getElementById('searchLiveResults');
+  if (box) {
+    box.hidden = true;
+    box.innerHTML = '';
+  }
+}
+
+function renderSearchLiveResults(q) {
+  const box = document.getElementById('searchLiveResults');
+  if (!box) return;
+  const query = String(q || '').trim();
+  if (query.length < 2) {
+    hideSearchLiveResults();
+    return;
+  }
+  const hits = getAllProducts().filter((p) => productMatchesLiveQuery(p, query)).slice(0, 12);
+  if (!hits.length) {
+    box.innerHTML = '<div class="search-live-empty">Nenhum produto encontrado</div>';
+    box.hidden = false;
+    return;
+  }
+  box.innerHTML = hits.map((p) => {
+    const foto = p.foto || (p.fotos && p.fotos[0]) || '';
+    const price = p.somenteAtacado
+      ? (p.atacado ? 'R$ ' + p.atacado : '')
+      : (p.varejo ? 'R$ ' + p.varejo : (p.atacado ? 'R$ ' + p.atacado : ''));
+    const sub = [p.brand, p.cat].filter(Boolean).join(' · ');
+    const id = escapeHtmlLive(productId(p));
+    return `<button type="button" class="search-live-item" data-live-id="${id}" role="option">
+      <img src="${escapeHtmlLive(foto)}" alt="" loading="lazy" onerror="this.style.opacity=0.3" />
+      <div class="search-live-meta">
+        <div class="search-live-name">${escapeHtmlLive(displayName(p.nome))}</div>
+        <div class="search-live-sub">${escapeHtmlLive(sub)}</div>
+      </div>
+      <div class="search-live-price">${escapeHtmlLive(price)}</div>
+    </button>`;
+  }).join('');
+  box.hidden = false;
+  box.querySelectorAll('.search-live-item').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-live-id');
+      const prod = findProduct(id);
+      hideSearchLiveResults();
+      if (prod && typeof openDetails === 'function') openDetails(prod);
+      else if (prod && typeof openProduct === 'function') openProduct(prod);
+    });
+  });
+}
+
 function bindGlobalEvents() {
   document.getElementById('tabs')?.addEventListener('click', e => {
     const btn = e.target.closest('.tab'); if (!btn) return;
@@ -1555,7 +1677,22 @@ function bindGlobalEvents() {
     const dest = document.getElementById('destaquesHost'); if (dest) dest.style.display = currentLine === 'all' ? '' : 'none';
     saveFilters(); populateBrands(); renderProducts(true);
   });
-  document.getElementById('searchInput')?.addEventListener('input', e => { searchTerm=e.target.value.trim(); saveFilters(); renderProducts(true); });
+  document.getElementById('searchInput')?.addEventListener('input', e => {
+    searchTerm = e.target.value.trim();
+    saveFilters();
+    renderProducts(true);
+    renderSearchLiveResults(searchTerm);
+  });
+  document.getElementById('searchInput')?.addEventListener('focus', e => {
+    if ((e.target.value || '').trim().length >= 2) renderSearchLiveResults(e.target.value.trim());
+  });
+  document.addEventListener('click', (e) => {
+    const box = document.getElementById('searchLiveResults');
+    const input = document.getElementById('searchInput');
+    if (!box || box.hidden) return;
+    if (box.contains(e.target) || input?.contains(e.target)) return;
+    hideSearchLiveResults();
+  });
   document.getElementById('filterMarca')?.addEventListener('change', e => { filterMarca=e.target.value; saveFilters(); renderProducts(true); });
   document.getElementById('filterDisponivel')?.addEventListener('change', e => { filterDisp=e.target.value; renderProducts(true); });
   document.getElementById('filterPreco')?.addEventListener('change', e => { filterPreco=e.target.value; renderProducts(true); });
