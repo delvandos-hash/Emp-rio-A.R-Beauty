@@ -4,7 +4,7 @@
 import { parsePrice, formatPriceBR as formatPrice } from './prices.js';
 
 const GIST_RAW_URL = 'https://gist.githubusercontent.com/delvandos-hash/081d1d5efa2e2003cf859964a650dfb5/raw/catalogo.json';
-const CATALOG_URLS = [GIST_RAW_URL, '/catalogo.json'];
+const CATALOG_URLS = ['/catalogo.json', GIST_RAW_URL];
 const PAGE_SIZE = 48;
 const STOCK_CACHE_MS = 10 * 60 * 1000;
 const CANONICAL_HOME = 'https://emporioar-beauty.netlify.app/';
@@ -393,31 +393,29 @@ function cartTotals() {
 }
 
 /** Monta URL pública do produto no MakiMakes (sem expor custo). */
-function resolveProductPageUrl(p) {
-  if (p && p.sourceUrl) {
-    try {
-      const u = new URL(p.sourceUrl);
-      if (u.hostname.endsWith('makimakesoficial.com.br') && u.pathname.includes('/p')) return u.toString();
-    } catch (_) {}
+function resolveProductStockPath(p) {
+  // Apenas path relativo público (slug/.../p). Nunca monta URL da loja raiz no navegador.
+  let path = '';
+  if (p && (p.path || p.slug)) path = String(p.path || p.slug).trim();
+  path = path.replace(/^https?:\/\/(www\.)?makimakesoficial\.com\.br\//i, '');
+  path = path.replace(/^\//, '').split('?')[0].split('#')[0].replace(/\/+$/, '');
+  if (path && !/\/p$/.test(path)) {
+    if (!path.includes('/')) path = path + '/p';
   }
-  const path = (p && (p.path || p.slug || '')) ? String(p.path || p.slug).replace(/^\//, '') : '';
-  if (path && /\/p\/?$/.test(path)) {
-    return 'https://www.makimakesoficial.com.br/' + path.replace(/^\//, '');
-  }
-  return '';
+  return /\/p$/.test(path) ? path : '';
 }
 
 async function checkLiveStock(p) {
-  const url = resolveProductPageUrl(p);
-  if (!url) return p.disponivel;
-  const cached = stockCache.get(url);
+  const path = resolveProductStockPath(p);
+  if (!path) return p.disponivel;
+  const cached = stockCache.get(path);
   if (cached && Date.now() - cached.ts < STOCK_CACHE_MS) return cached.disponivel;
   try {
-    const res = await fetch('/.netlify/functions/stock?url=' + encodeURIComponent(url), { cache: 'no-store' });
+    const res = await fetch('/.netlify/functions/stock?path=' + encodeURIComponent(path), { cache: 'no-store' });
     if (!res.ok) throw new Error('fn');
     const data = await res.json();
     const disponivel = data.disponivel || p.disponivel;
-    stockCache.set(url, { disponivel, ts: Date.now() });
+    stockCache.set(path, { disponivel, ts: Date.now() });
     return disponivel;
   } catch (_) {
     return p.disponivel;
