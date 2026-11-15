@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import puppeteer from 'puppeteer';
+import { sanitizePublicImageUrl } from './public-image-url.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -397,6 +398,7 @@ async function processProduct(url, page, specialMaps = {}) {
       path: productPath || undefined
     };
 
+    const publicItem = sanitizePublicItem({ ...baseItem });
     return {
       line,
       cat: category || line,
@@ -408,14 +410,98 @@ async function processProduct(url, page, specialMaps = {}) {
         sourceUrl: url,
         basePrice: formatPrice(basePrice)
       },
-      // PÚBLICO: sem custo; path liberado só para checagem de estoque
-      publicItem: { ...baseItem }
+      // PÚBLICO: sem custo/origem; path só para estoque via function
+      publicItem
     };
   } catch (e) {
     return null;
   }
 }
 
+
+
+/** Remove vazamentos de origem do payload público. */
+const PUBLIC_DENY_KEYS = new Set([
+  'sourceUrl', 'basePrice', 'preco_base', 'precoBase', 'custo', 'cost',
+  'markup', 'varejoMarkup', 'atacadoMarkup', 'id_origem', 'url_origem',
+  'sku_origem', 'supplier', 'fornecedor', 'html', 'raw', 'page_url', 'pageUrl',
+]);
+
+function stripPublicTextLeaks(text) {
+  return String(text || '')
+    .replace(/https?:\/\/[^\s<>"']+/gi, '')
+    .replace(/\b(?:www\.)[a-z0-9.-]+\.[a-z]{2,}(?:\/[^\s<>"']*)?/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .slice(0, 800);
+}
+
+function sanitizePublicItem(item) {
+  if (!item || typeof item !== 'object') return item;
+  const out = { ...item };
+  for (const key of PUBLIC_DENY_KEYS) delete out[key];
+  // path: apenas slug/.../p relativo (estoque); nunca URL absoluta
+  if (out.path) {
+    let p = String(out.path).trim();
+    p = p.replace(/^https?:\/\/(www\.)?makimakesoficial\.com\.br\//i, '');
+    p = p.replace(/^\//, '').split('?')[0].split('#')[0].replace(/\/+$/, '');
+    if (p && !p.endsWith('/p')) {
+      // se veio só slug, normaliza
+      if (!p.includes('/')) p = p + '/p';
+    }
+    if (p && p.endsWith('/p')) out.path = p;
+    else delete out.path;
+  }
+  if (typeof out.notas === 'string') {
+    out.notas = stripPublicTextLeaks(out.notas);
+    if (!out.notas) delete out.notas;
+  }
+  // variações: sem href absoluto de loja raiz
+  if (Array.isArray(out.variacoes)) {
+    out.variacoes = out.variacoes.map((v) => {
+      const clean = { ...v };
+      if (clean.href) {
+        // guarda só path relativo se for da loja; senão remove
+        try {
+          const u = new URL(String(clean.href), 'https://www.makimakesoficial.com.br');
+          if (u.hostname.replace(/^www\./, '') === 'makimakesoficial.com.br') {
+            let vp = u.pathname.replace(/^\//, '').replace(/\/+$/, '');
+            if (vp.endsWith('/p')) clean.href = vp;
+            else delete clean.href;
+          } else delete clean.href;
+        } catch {
+          delete clean.href;
+        }
+      }
+      delete clean.sourceUrl;
+      delete clean.basePrice;
+      return clean;
+    });
+  }
+  // Fotos só via proxy same-origin (sem CDN no JSON público)
+  if (out.foto) {
+    const safe = sanitizePublicImageUrl(String(out.foto));
+    if (safe) out.foto = safe;
+    else delete out.foto;
+  }
+  if (Array.isArray(out.fotos)) {
+    out.fotos = out.fotos.map((u) => sanitizePublicImageUrl(String(u || ''))).filter(Boolean);
+    if (!out.fotos.length) delete out.fotos;
+    else if (!out.foto) out.foto = out.fotos[0];
+  }
+  if (Array.isArray(out.variacoes)) {
+    out.variacoes = out.variacoes.map((v) => {
+      const clean = { ...v };
+      if (clean.foto) {
+        const safe = sanitizePublicImageUrl(String(clean.foto));
+        if (safe) clean.foto = safe;
+        else delete clean.foto;
+      }
+      return clean;
+    });
+  }
+  return out;
+}
 
 /** Normaliza URL/slug de produto MakiMakes */
 function productSlug(url) {
@@ -696,13 +782,15 @@ async function main() {
   console.log('  data/catalogo.public.json     (público limpo)');
   console.log('  catalogo.json                 (cópia pública na raiz)');
 
-  // Validação rápida: nenhum basePrice/sourceUrl no público
+  // Validação: sem campos de origem/custo e sem domínio da loja raiz no JSON público
   const publicStr = JSON.stringify(publicOutput);
-  if (publicStr.includes('"basePrice"') || publicStr.includes('"sourceUrl"')) {
-    console.error('❌ ERRO: JSON público ainda contém campos sensíveis!');
+  const leaks = ['"basePrice"', '"sourceUrl"', '"preco_base"', '"id_origem"', 'makimakesoficial.com.br', 'makimakes.jetassets.com.br'];
+  const found = leaks.filter((k) => publicStr.includes(k));
+  if (found.length) {
+    console.error('❌ ERRO: JSON público ainda contém campos/domínios sensíveis:', found.join(', '));
     process.exit(1);
   }
-  console.log('✅ JSON público validado: sem basePrice / sourceUrl');
+  console.log('✅ JSON público validado: sem basePrice/sourceUrl/CDN/domínio da loja raiz');
 
   // 6. Atualiza Gist (se credenciais existirem)
   const gistId = process.env.GIST_ID;
