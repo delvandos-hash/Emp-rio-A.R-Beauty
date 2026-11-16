@@ -619,7 +619,8 @@ function buildOutputs(raw, specialGroups) {
       groupsByLine[r.line][key] = { cat: r.cat, brand: r.brand, items: [], publicItems: [] };
     }
     groupsByLine[r.line][key].items.push(r.internalItem);
-    groupsByLine[r.line][key].publicItems.push(r.publicItem);
+    const pub = sanitizePublicItem(r.publicItem || {});
+    groupsByLine[r.line][key].publicItems.push(pub);
 
     if (r.specialKey && destaquesInternal[r.specialKey]) {
       destaquesInternal[r.specialKey].push({
@@ -629,7 +630,7 @@ function buildOutputs(raw, specialGroups) {
         line: r.line
       });
       destaquesPublic[r.specialKey].push({
-        ...r.publicItem,
+        ...pub,
         brand: r.brand,
         cat: r.cat,
         line: r.line
@@ -657,7 +658,6 @@ function buildOutputs(raw, specialGroups) {
 
   const metaCommon = {
     updated_at: new Date().toISOString(),
-    source: 'makimakes',
     total_products: raw.length,
     version: 4
   };
@@ -675,7 +675,7 @@ function buildOutputs(raw, specialGroups) {
       BRANDS: [...brandsSet].sort(),
       WHATSAPP,
       BRAND,
-      META: { ...metaCommon, price_rules: { ...PRICE_RULES, especiais: SPECIAL_PRICE_RULES } }
+      META: { ...metaCommon, source: 'internal', price_rules: { ...PRICE_RULES, especiais: SPECIAL_PRICE_RULES } }
     },
     public: {
       DATA: DATA_PUBLIC,
@@ -750,6 +750,12 @@ async function main() {
   // 4. Resolve fotos das variações (slug dos produtos + og:image)
   await resolveVariationPhotos(results);
 
+  // 4b. Re-sanitiza o público APÓS resolver fotos de variações
+  // (resolveVariationPhotos pode reintroduzir URLs da CDN no publicItem)
+  for (const r of results) {
+    if (r?.publicItem) r.publicItem = sanitizePublicItem(r.publicItem);
+  }
+
   // 5. Gera saídas
   const { internal, public: publicOutput } = buildOutputs(results, SPECIAL_GROUPS);
 
@@ -762,20 +768,30 @@ async function main() {
     JSON.stringify(internal, null, 2)
   );
 
-  // Público limpo
+  // Público limpo — scrub final de qualquer CDN residual
+  const scrubbedPublic = JSON.parse(JSON.stringify(publicOutput), (key, value) => {
+    if (typeof value === 'string' && /makimakes\.jetassets\.com\.br|makimakesoficial\.com\.br/i.test(value)) {
+      // tenta converter imagem; senão remove o campo (retorna undefined em JSON.stringify via omit no parent — aqui esvazia)
+      const proxied = sanitizePublicImageUrl(value);
+      return proxied || undefined;
+    }
+    return value;
+  });
+  // remove chaves com undefined
+  const publicClean = JSON.parse(JSON.stringify(scrubbedPublic));
   const publicPath = path.join(dataDir, 'catalogo.public.json');
-  fs.writeFileSync(publicPath, JSON.stringify(publicOutput, null, 2));
+  fs.writeFileSync(publicPath, JSON.stringify(publicClean, null, 2));
 
   // Copia o PÚBLICO para a raiz (é o que o Netlify serve em /catalogo.json)
   const rootPublic = path.join(__dirname, '..', 'catalogo.json');
-  fs.writeFileSync(rootPublic, JSON.stringify(publicOutput, null, 2));
+  fs.writeFileSync(rootPublic, JSON.stringify(publicClean, null, 2));
 
   console.log('\n--- Resultado ---');
   const marked = results.filter(r => r.specialKey).length;
   console.log('Produtos marcados como vitrine (specialKey):', marked);
-  console.log('Destaques Lojas R$10:', publicOutput.DESTAQUES.lojas10?.items?.length || 0);
-  console.log('Destaques Ofertas:', publicOutput.DESTAQUES.ofertasLimitadas?.items?.length || 0);
-  console.log('Destaques Black Friday:', publicOutput.DESTAQUES.blackFriday?.items?.length || 0);
+  console.log('Destaques Lojas R$10:', publicClean.DESTAQUES.lojas10?.items?.length || 0);
+  console.log('Destaques Ofertas:', publicClean.DESTAQUES.ofertasLimitadas?.items?.length || 0);
+  console.log('Destaques Black Friday:', publicClean.DESTAQUES.blackFriday?.items?.length || 0);
   console.log('Total produtos processados:', results.length);
   console.log('Arquivos gerados:');
   console.log('  data/catalogo.generated.json  (INTERNO — não publicar)');
@@ -783,7 +799,7 @@ async function main() {
   console.log('  catalogo.json                 (cópia pública na raiz)');
 
   // Validação: sem campos de origem/custo e sem domínio da loja raiz no JSON público
-  const publicStr = JSON.stringify(publicOutput);
+  const publicStr = JSON.stringify(publicClean);
   const leaks = ['"basePrice"', '"sourceUrl"', '"preco_base"', '"id_origem"', 'makimakesoficial.com.br', 'makimakes.jetassets.com.br'];
   const found = leaks.filter((k) => publicStr.includes(k));
   if (found.length) {
@@ -807,7 +823,7 @@ async function main() {
         },
         body: JSON.stringify({
           files: {
-            'catalogo.json': { content: JSON.stringify(publicOutput, null, 2) }
+            'catalogo.json': { content: JSON.stringify(publicClean, null, 2) }
           }
         })
       });
